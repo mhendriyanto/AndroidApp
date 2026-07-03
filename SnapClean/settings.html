@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapClean Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main class="phone">
+    <div class="status-bar"><span>9:41</span><div class="status-icons"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div></div>
+    <section class="app-scroll">
+      <header class="top-bar">
+        <div class="title-block"><p>Preferences</p><h1>Settings</h1></div>
+      </header>
+      <div class="section-head !mt-0"><h2>Account</h2><span></span></div>
+      <article class="card">
+        <div class="row">
+          <div class="flex items-center gap-4">
+            <img class="w-[78px] h-[78px] rounded-[26px] object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Maya">
+            <div class="stack"><span class="value text-[20px]">Maya Chen</span><span class="label">maya@example.com</span></div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-300"></i>
+        </div>
+      </article>
+      <div class="section-head"><h2>Cleanup</h2><span></span></div>
+      <article class="card">
+        <div class="row"><div class="flex items-center gap-3"><div class="setting-icon"><i class="fa-solid fa-trash-can"></i></div><div class="stack"><span class="value">Auto-delete expired</span><span class="label">On app open</span></div></div><div class="switch"></div></div>
+        <div class="row mt-5"><div class="flex items-center gap-3"><div class="setting-icon"><i class="fa-solid fa-bell"></i></div><div class="stack"><span class="value">Urgent alerts</span><span class="label">Under 30 minutes</span></div></div><div class="switch"></div></div>
+      </article>
+      <div class="section-head"><h2>Defaults</h2><span>Edit</span></div>
+      <article class="card">
+        <div class="row"><span class="label">Default timer</span><span class="badge"><i class="fa-solid fa-clock"></i> 1 hour</span></div>
+        <div class="row mt-4"><span class="label">Import source</span><span class="value text-[13px]">Photos picker</span></div>
+      </article>
+      <div class="section-head"><h2>Notifications</h2><span></span></div>
+      <article class="card">
+        <div class="row"><div class="flex items-center gap-3"><div class="setting-icon"><i class="fa-solid fa-bell"></i></div><div class="stack"><span class="value">Expiry reminders</span><span class="label">30 minutes before</span></div></div><div class="switch"></div></div>
+      </article>
+      <div class="section-head"><h2>Storage</h2><span></span></div>
+      <article class="card">
+        <div class="row"><div class="flex items-center gap-3"><div class="setting-icon"><i class="fa-solid fa-hard-drive"></i></div><div class="stack"><span class="value">Cache cleanup</span><span class="label">Remove local copies</span></div></div><i class="fa-solid fa-chevron-right text-slate-300"></i></div>
+      </article>
+      <div class="section-head"><h2>Appearance</h2><span></span></div>
+      <article class="card">
+        <div class="row"><div class="flex items-center gap-3"><div class="setting-icon"><i class="fa-solid fa-circle-half-stroke"></i></div><div class="stack"><span class="value">Theme</span><span class="label">System default</span></div></div><i class="fa-solid fa-chevron-right text-slate-300"></i></div>
+      </article>
+    </section>
+    <nav class="tab-bar">
+      <div class="tab"><i class="fa-solid fa-house"></i><span>Home</span></div>
+      <div class="tab"><i class="fa-solid fa-plus"></i><span>Import</span></div>
+      <div class="tab"><i class="fa-solid fa-images"></i><span>Active</span></div>
+      <div class="tab"><i class="fa-solid fa-hourglass-half"></i><span>Expire</span></div>
+      <div class="tab active"><i class="fa-solid fa-gear"></i><span>Settings</span></div>
+      <div class="home-indicator"></div>
+    </nav>
+  </main>
+</body>
+</html>

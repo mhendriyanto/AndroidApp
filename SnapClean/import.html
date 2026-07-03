@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapClean Import</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main class="phone">
+    <div class="status-bar"><span>9:41</span><div class="status-icons"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div></div>
+    <section class="app-scroll">
+      <header class="top-bar">
+        <button class="icon-button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        <div class="title-block flex-1"><p>From Photos</p><h1>Import</h1></div>
+      </header>
+      <div class="google-add-box">
+        <div>
+          <div class="google-add-icon"><i class="fa-solid fa-plus"></i></div>
+          <div class="value text-[18px]">Add screenshot</div>
+          <p class="m-0 mt-2 text-[13px] leading-5 font-bold text-slate-500">Choose from Photos</p>
+        </div>
+      </div>
+      <div class="section-head"><h2>Selected</h2><span>3 shots</span></div>
+      <div class="grid grid-cols-3 gap-3">
+        <img class="h-[112px] w-full object-cover rounded-[20px]" src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=300&q=80" alt="Checkout screen">
+        <img class="h-[112px] w-full object-cover rounded-[20px]" src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=300&q=80" alt="Desktop screenshot">
+        <img class="h-[112px] w-full object-cover rounded-[20px]" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=300&q=80" alt="Dashboard screenshot">
+      </div>
+      <div class="section-head"><h2>Choose timer</h2><span>Required</span></div>
+      <div class="timer-grid">
+        <div class="timer-tile"><i class="fa-solid fa-bookmark"></i><div><strong>Keep</strong><br><span>No timer</span></div></div>
+        <div class="timer-tile active"><i class="fa-solid fa-bolt"></i><div><strong>30 minutes</strong><br><span>Quick use</span></div></div>
+        <div class="timer-tile"><i class="fa-solid fa-clock"></i><div><strong>1 hour</strong><br><span>Temporary</span></div></div>
+        <div class="timer-tile"><i class="fa-solid fa-infinity"></i><div><strong>Forever</strong><br><span>Save</span></div></div>
+      </div>
+      <button class="primary-button mt-5"><i class="fa-solid fa-hourglass-start"></i> Save timer</button>
+    </section>
+    <nav class="tab-bar">
+      <div class="tab"><i class="fa-solid fa-house"></i><span>Home</span></div>
+      <div class="tab active"><i class="fa-solid fa-plus"></i><span>Import</span></div>
+      <div class="tab"><i class="fa-solid fa-images"></i><span>Active</span></div>
+      <div class="tab"><i class="fa-solid fa-hourglass-half"></i><span>Expire</span></div>
+      <div class="tab"><i class="fa-solid fa-gear"></i><span>Settings</span></div>
+      <div class="home-indicator"></div>
+    </nav>
+  </main>
+</body>
+</html>

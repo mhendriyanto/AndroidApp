@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapClean Expiring</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main class="phone">
+    <div class="status-bar"><span>9:41</span><div class="status-icons"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div></div>
+    <section class="app-scroll">
+      <header class="top-bar">
+        <div class="title-block"><p>Deletes on app open</p><h1>Expiring</h1></div>
+      </header>
+      <div class="cleaned-strip"><strong><i class="fa-solid fa-broom mr-2"></i>4 cleaned</strong><span>9:41 AM</span></div>
+      <div class="cleanup-bar mt-4"><span class="active">All</span><span>30m</span><span>1h</span><span>Today</span></div>
+      <div class="section-head"><h2>Review now</h2><span>3 urgent</span></div>
+      <article class="shot-item">
+        <div class="flex gap-3">
+          <div class="mini-shot mini-mock receipt" aria-label="Order screenshot"><div class="mock-block"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="row"><h3>Order confirmation</h3><span class="badge danger">8m</span></div>
+            <p>Keep, snooze, or delete.</p>
+            <div class="progress mt-3"><span style="width:82%;background:#e11d48"></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="shot-item">
+        <div class="flex gap-3">
+          <div class="mini-shot mini-mock chat" aria-label="Chat screenshot"><div class="mock-block"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="row"><h3>Message thread</h3><span class="badge warn">43m</span></div>
+            <p>Snooze or save.</p>
+            <div class="progress mt-3"><span style="width:44%;background:#d97706"></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="shot-item">
+        <div class="flex gap-3">
+          <div class="mini-shot mini-mock chart" aria-label="Analytics screenshot"><div class="mock-block"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="row"><h3>Analytics chart</h3><span class="badge">Tonight</span></div>
+            <p>Deletes at bedtime.</p>
+            <div class="progress mt-3"><span style="width:26%"></span></div>
+          </div>
+        </div>
+      </article>
+      <div class="section-head"><h2>After cleanup</h2><span></span></div>
+      <article class="empty-state">
+        <div class="empty-state-icon"><i class="fa-solid fa-check"></i></div>
+        <div class="value">All clean</div>
+        <p class="m-0 mt-1 text-[13px] font-bold text-slate-500">No expired screenshots left.</p>
+      </article>
+    </section>
+    <nav class="tab-bar">
+      <div class="tab"><i class="fa-solid fa-house"></i><span>Home</span></div>
+      <div class="tab"><i class="fa-solid fa-plus"></i><span>Import</span></div>
+      <div class="tab"><i class="fa-solid fa-images"></i><span>Active</span></div>
+      <div class="tab active"><i class="fa-solid fa-hourglass-half"></i><span>Expire</span></div>
+      <div class="tab"><i class="fa-solid fa-gear"></i><span>Settings</span></div>
+      <div class="home-indicator"></div>
+    </nav>
+  </main>
+</body>
+</html>

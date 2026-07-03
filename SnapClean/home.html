@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapClean Home</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <main class="phone">
+    <div class="status-bar"><span>9:41</span><div class="status-icons"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div></div>
+    <section class="app-scroll">
+      <header class="top-bar">
+        <div class="title-block"><p>7 active timers</p><h1>Home</h1></div>
+        <img class="avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80" alt="Profile">
+      </header>
+      <article class="hero-clean">
+        <div class="hero-clean-content">
+          <span class="badge danger w-fit"><i class="fa-solid fa-clock"></i> 8 min left</span>
+          <h2>3 shots expire soon.</h2>
+          <p>Review, keep, or let them delete.</p>
+        </div>
+        <div class="hero-shot-stack" aria-hidden="true">
+          <div class="floating-shot back">
+            <div class="mock-status"></div>
+            <div class="mock-card"></div>
+            <div class="mock-line"></div>
+            <div class="mock-line short"></div>
+            <div class="mock-chip"></div>
+          </div>
+          <div class="floating-shot front">
+            <div class="mock-status"></div>
+            <div class="mock-line"></div>
+            <div class="mock-line short"></div>
+            <div class="mock-card"></div>
+            <div class="mock-chip"></div>
+          </div>
+        </div>
+      </article>
+      <div class="metric-grid">
+        <div class="metric"><strong>18</strong><span>cleaned</span></div>
+        <div class="metric"><strong>430MB</strong><span>space saved</span></div>
+        <div class="metric"><strong>6</strong><span>kept</span></div>
+      </div>
+      <div class="section-head"><h2>Quick timers</h2><span>Add</span></div>
+      <div class="chip-row">
+        <span class="chip active"><i class="fa-solid fa-bolt"></i>30 min</span>
+        <span class="chip"><i class="fa-solid fa-clock"></i>1 hour</span>
+        <span class="chip"><i class="fa-solid fa-moon"></i>Tonight</span>
+        <span class="chip"><i class="fa-solid fa-calendar-day"></i>Tomorrow</span>
+        <span class="chip"><i class="fa-solid fa-infinity"></i>Forever</span>
+      </div>
+      <div class="section-head"><h2>Expiring now</h2><span>Review all</span></div>
+      <article class="shot-item">
+        <div class="flex gap-3">
+          <div class="mini-shot mini-mock receipt" aria-label="Order screenshot"><div class="mock-block"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="row"><h3>Order confirmation</h3><span class="badge danger">8m</span></div>
+            <p>Delete unless still needed.</p>
+            <div class="progress mt-3"><span style="width:82%;background:#e11d48"></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="shot-item">
+        <div class="flex gap-3">
+          <div class="mini-shot mini-mock chat" aria-label="Chat screenshot"><div class="mock-block"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="row"><h3>Chat snippet</h3><span class="badge warn">43m</span></div>
+            <p>Deletes after 1 hour.</p>
+            <div class="progress mt-3"><span style="width:44%;background:#d97706"></span></div>
+          </div>
+        </div>
+      </article>
+    </section>
+    <nav class="tab-bar">
+      <div class="tab active"><i class="fa-solid fa-house"></i><span>Home</span></div>
+      <div class="tab"><i class="fa-solid fa-plus"></i><span>Import</span></div>
+      <div class="tab"><i class="fa-solid fa-images"></i><span>Active</span></div>
+      <div class="tab"><i class="fa-solid fa-hourglass-half"></i><span>Expire</span></div>
+      <div class="tab"><i class="fa-solid fa-gear"></i><span>Settings</span></div>
+      <div class="home-indicator"></div>
+    </nav>
+  </main>
+</body>
+</html>
