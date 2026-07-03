@@ -1,1 +1,6 @@
 .DS_Store
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
