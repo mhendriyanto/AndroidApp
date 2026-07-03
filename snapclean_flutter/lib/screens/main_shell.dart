@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../screens/tabs/active_screen.dart';
-import '../screens/tabs/expiring_screen.dart';
 import '../screens/tabs/home_screen.dart';
 import '../screens/tabs/import_screen.dart';
+import '../screens/tabs/saved_screen.dart';
 import '../screens/tabs/settings_screen.dart';
 import '../state/app_controller.dart';
 import '../theme/app_theme.dart';
@@ -50,53 +50,70 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(onImport: () => selectTab(1), onActive: () => selectTab(2)),
-      ImportScreen(onViewActive: () => selectTab(2)),
+      HomeScreen(onActive: () => selectTab(1)),
       const ActiveScreen(),
-      const ExpiringScreen(),
+      SavedScreen(onImport: () => selectTab(4)),
       const SettingsScreen(),
+      ImportScreen(
+          onViewActive: () => selectTab(1), onClose: () => selectTab(0)),
     ];
     return Scaffold(
       body: IndexedStack(index: index, children: pages),
-      bottomNavigationBar: Container(
-        height: 84,
-        decoration: const BoxDecoration(
-            color: Color(0xF0FFFFFF),
-            border: Border(top: BorderSide(color: Color(0xCCE2E8F0)))),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                NavItem(
-                    icon: Icons.home_rounded,
-                    label: 'Home',
-                    active: index == 0,
-                    onTap: () => selectTab(0)),
-                NavItem(
-                    icon: Icons.add_rounded,
-                    label: 'Import',
-                    active: index == 1,
-                    onTap: () => selectTab(1)),
-                NavItem(
-                    icon: Icons.photo_library_rounded,
-                    label: 'Active',
-                    active: index == 2,
-                    onTap: () => selectTab(2)),
-                NavItem(
-                    icon: Icons.hourglass_bottom_rounded,
-                    label: 'Expire',
-                    active: index == 3,
-                    onTap: () => selectTab(3)),
-                NavItem(
-                    icon: Icons.settings_rounded,
-                    label: 'Settings',
-                    active: index == 4,
-                    onTap: () => selectTab(4)),
-              ],
-            ),
+      extendBody: true,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: index == 0
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 0, right: 0),
+              child: FloatingActionButton(
+                heroTag: 'home-import-fab',
+                elevation: 9,
+                backgroundColor: AppColors.brand,
+                foregroundColor: Colors.white,
+                onPressed: () => selectTab(4),
+                child: const Icon(Icons.add_rounded, size: 31),
+              ),
+            )
+          : null,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          height: 72,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.94),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xDDE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x220F172A),
+                  blurRadius: 30,
+                  offset: Offset(0, 14))
+            ],
+          ),
+          child: Row(
+            children: [
+              NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  active: index == 0,
+                  onTap: () => selectTab(0)),
+              NavItem(
+                  icon: Icons.folder_rounded,
+                  label: 'Timers',
+                  active: index == 1,
+                  onTap: () => selectTab(1)),
+              NavItem(
+                  icon: Icons.bookmark_rounded,
+                  label: 'Saved',
+                  active: index == 2,
+                  onTap: () => selectTab(2)),
+              NavItem(
+                  icon: Icons.settings_rounded,
+                  label: 'Settings',
+                  active: index == 3,
+                  onTap: () => selectTab(3)),
+            ],
           ),
         ),
       ),
@@ -118,23 +135,35 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 70,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Icon(icon,
-                color: active ? AppColors.brand : const Color(0xFF94A3B8),
-                size: 20),
-            const SizedBox(height: 5),
-            Text(label,
-                style: TextStyle(
-                    color: active ? AppColors.brand : const Color(0xFF94A3B8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900)),
-          ],
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          height: 54,
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFFECFEFF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  color: active ? AppColors.brandDark : const Color(0xFF94A3B8),
+                  size: 21),
+              const SizedBox(height: 4),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: active
+                          ? AppColors.brandDark
+                          : const Color(0xFF94A3B8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900)),
+            ],
+          ),
         ),
       ),
     );

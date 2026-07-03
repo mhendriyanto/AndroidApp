@@ -6,9 +6,22 @@ import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/mock_screenshot.dart';
 
-class SnapDetailScreen extends StatelessWidget {
+class SnapDetailScreen extends StatefulWidget {
   final SnapItem item;
   const SnapDetailScreen({required this.item, super.key});
+
+  @override
+  State<SnapDetailScreen> createState() => _SnapDetailScreenState();
+}
+
+class _SnapDetailScreenState extends State<SnapDetailScreen> {
+  late SnapItem item;
+
+  @override
+  void initState() {
+    super.initState();
+    item = widget.item;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +32,8 @@ class SnapDetailScreen extends StatelessWidget {
         leading: RoundIcon(
             icon: Icons.chevron_left_rounded,
             onTap: () => Navigator.pop(context)),
+        trailing:
+            RoundIcon(icon: Icons.more_horiz_rounded, onTap: _showActionSheet),
         child: Column(
           children: [
             AppCard(
@@ -67,15 +82,187 @@ class SnapDetailScreen extends StatelessWidget {
               SecondaryButton(
                 label: 'Delete now',
                 icon: Icons.delete_rounded,
-                onTap: () {
-                  SnapCleanScope.of(context).deleteSnap(item.id);
-                  Navigator.pop(context);
-                },
+                onTap: _confirmDelete,
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  void _showActionSheet() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EmptyStateCard(
+                icon: Icons.image_rounded,
+                title: item.title,
+                subtitle: item.isKept
+                    ? 'Archived screenshot'
+                    : 'Timer ${item.badge(DateTime.now())}'),
+            DetailActionTile(
+                icon: Icons.drive_file_rename_outline_rounded,
+                label: 'Rename',
+                onTap: () {
+                  Navigator.pop(context);
+                  _rename();
+                }),
+            DetailActionTile(
+                icon: Icons.timer_rounded,
+                label: 'Change timer',
+                onTap: () {
+                  Navigator.pop(context);
+                  _changeTimer();
+                }),
+            DetailActionTile(
+                icon: Icons.folder_rounded,
+                label: 'Add to folder',
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Choose a folder from Saved first.')),
+                  );
+                }),
+            DetailActionTile(
+                icon: Icons.bookmark_rounded,
+                label: 'Move to Archive',
+                onTap: () {
+                  Navigator.pop(context);
+                  SnapCleanScope.of(context).keepSnap(item.id);
+                  setState(() {
+                    item = item.copyWith(
+                        expiresAt: null,
+                        resumeExpiresAt: null,
+                        status: SnapStatus.kept,
+                        note: 'Saved for later.');
+                  });
+                }),
+            DetailActionTile(
+                icon: Icons.delete_outline_rounded,
+                label: 'Delete',
+                danger: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete();
+                }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _rename() {
+    final controller = TextEditingController(text: item.title);
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppField(
+                label: 'Screenshot name', value: '', controller: controller),
+            const SizedBox(height: 14),
+            PrimaryButton(
+                label: 'Save name',
+                icon: Icons.check_rounded,
+                onTap: () {
+                  final next = controller.text.trim();
+                  if (next.isNotEmpty) {
+                    SnapCleanScope.of(context).renameSnap(item.id, next);
+                    setState(() => item = item.copyWith(title: next));
+                  }
+                  Navigator.pop(context);
+                }),
+          ],
+        ),
+      ),
+    ).then((_) => controller.dispose());
+  }
+
+  void _changeTimer() {
+    final options = const [
+      ('10 minutes', Duration(minutes: 10)),
+      ('30 minutes', Duration(minutes: 30)),
+      ('1 hour', Duration(hours: 1)),
+      ('Tomorrow', Duration(days: 1)),
+    ];
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final option in options)
+              ListTile(
+                leading:
+                    const Icon(Icons.timer_rounded, color: AppColors.brand),
+                title: Text(option.$1,
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+                onTap: () {
+                  SnapCleanScope.of(context).snoozeSnap(item.id, option.$2);
+                  setState(() {
+                    item = item.copyWith(
+                        expiresAt: DateTime.now().add(option.$2),
+                        status: SnapStatus.active,
+                        note: 'Timer changed to ${option.$1}.');
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete() {
+    showConfirmSheet(context,
+            title: 'Delete screenshot?',
+            message:
+                'This moves it to Recently Deleted. You can review it later.',
+            confirmLabel: 'Delete',
+            icon: Icons.delete_outline_rounded,
+            danger: true)
+        .then((confirmed) {
+      if (!confirmed || !mounted) return;
+      SnapCleanScope.of(context).deleteSnap(item.id);
+      Navigator.pop(context);
+    });
+  }
+}
+
+class DetailActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+  const DetailActionTile(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.danger = false,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? AppColors.rose : AppColors.brandDark;
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(label,
+          style: TextStyle(color: color, fontWeight: FontWeight.w900)),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
     );
   }
 }

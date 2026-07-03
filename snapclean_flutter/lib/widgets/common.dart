@@ -9,11 +9,20 @@ class AuthShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-            child: child,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+              child: child,
+            ),
           ),
         ),
       ),
@@ -27,6 +36,7 @@ class AppPage extends StatelessWidget {
   final Widget child;
   final Widget? leading;
   final Widget? trailing;
+  final bool scrollable;
 
   const AppPage(
       {required this.eyebrow,
@@ -34,13 +44,15 @@ class AppPage extends StatelessWidget {
       required this.child,
       this.leading,
       this.trailing,
+      this.scrollable = true,
       super.key});
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 26),
+        physics: scrollable ? null : const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 112),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,8 +63,6 @@ class AppPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(eyebrow, style: AppText.label),
-                      const SizedBox(height: 4),
                       Text(title, style: AppText.title),
                     ],
                   ),
@@ -85,11 +95,11 @@ class AppCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xF5E2E8F0)),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x0A0F172A), blurRadius: 16, offset: Offset(0, 8))
+              color: Color(0x0D0F172A), blurRadius: 24, offset: Offset(0, 12))
         ],
       ),
       child: child,
@@ -246,6 +256,67 @@ class RoundIcon extends StatelessWidget {
   }
 }
 
+class AppSearchBar extends StatelessWidget {
+  final String hint;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
+  final TextEditingController? controller;
+  const AppSearchBar(
+      {this.hint = 'Search screenshots',
+      this.onTap,
+      this.onChanged,
+      this.controller,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final editable = onChanged != null || controller != null;
+    final content = Row(
+      children: [
+        const Icon(Icons.search_rounded, color: AppColors.subtle),
+        const SizedBox(width: 9),
+        Expanded(
+          child: editable
+              ? TextField(
+                  controller: controller,
+                  onChanged: onChanged,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink),
+                  decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: hint,
+                      hintStyle: const TextStyle(
+                          color: AppColors.subtle,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700),
+                      contentPadding: EdgeInsets.zero),
+                )
+              : Text(hint,
+                  style: const TextStyle(
+                      color: AppColors.subtle,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+        ),
+      ],
+    );
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: content,
+      ),
+    );
+  }
+}
+
 class ProfileAvatar extends StatelessWidget {
   final VoidCallback? onTap;
   const ProfileAvatar({this.onTap, super.key});
@@ -314,6 +385,123 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
+class StatStrip extends StatelessWidget {
+  final List<StatTileData> items;
+  const StatStrip({required this.items, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (int index = 0; index < items.length; index++) ...[
+          Expanded(child: StatTile(data: items[index])),
+          if (index != items.length - 1) const SizedBox(width: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class StatTileData {
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
+  const StatTileData(
+      {required this.value,
+      required this.label,
+      required this.icon,
+      required this.color});
+}
+
+class StatTile extends StatelessWidget {
+  final StatTileData data;
+  const StatTile({required this.data, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 92,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.line),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x080F172A), blurRadius: 14, offset: Offset(0, 8))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(data.icon, color: data.color, size: 19),
+          const Spacer(),
+          Text(data.value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          Text(data.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.label.copyWith(fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+class InsightCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback? onTap;
+  const InsightCard(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      this.color = AppColors.brand,
+      this.onTap,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AppCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                  color: color.withOpacity(.11),
+                  borderRadius: BorderRadius.circular(16)),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppText.value),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: AppText.label),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class BadgePill extends StatelessWidget {
   final String label;
   final BadgeKind kind;
@@ -353,3 +541,204 @@ class BadgePill extends StatelessWidget {
 }
 
 enum BadgeKind { normal, warn, danger, keep }
+
+class EmptyStateCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final VoidCallback? onAction;
+  const EmptyStateCard(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      this.actionLabel,
+      this.actionIcon,
+      this.onAction,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        children: [
+          Container(
+            width: 74,
+            height: 74,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(icon, color: AppColors.brandDark, size: 34),
+          ),
+          const SizedBox(height: 15),
+          Text(title,
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text(subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.muted,
+                  height: 1.4,
+                  fontWeight: FontWeight.w700)),
+          if (actionLabel != null &&
+              onAction != null &&
+              actionIcon != null) ...[
+            const SizedBox(height: 16),
+            PrimaryButton(
+                label: actionLabel!, icon: actionIcon!, onTap: onAction!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class LoadingOverlay extends StatelessWidget {
+  final bool visible;
+  final String title;
+  final String subtitle;
+  final Widget child;
+  const LoadingOverlay(
+      {required this.visible,
+      required this.title,
+      required this.subtitle,
+      required this.child,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        IgnorePointer(
+          ignoring: visible,
+          child: Opacity(opacity: visible ? .3 : 1, child: child),
+        ),
+        if (visible) ...[
+          Positioned.fill(child: Container(color: const Color(0x990F172A))),
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x330F172A),
+                        blurRadius: 34,
+                        offset: Offset(0, 18))
+                  ]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                      width: 38,
+                      height: 38,
+                      child: CircularProgressIndicator(strokeWidth: 4)),
+                  const SizedBox(height: 16),
+                  Text(title, style: AppText.value),
+                  const SizedBox(height: 5),
+                  Text(subtitle,
+                      textAlign: TextAlign.center, style: AppText.label),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+Future<bool> showConfirmSheet(BuildContext context,
+    {required String title,
+    required String message,
+    String confirmLabel = 'Confirm',
+    IconData icon = Icons.warning_amber_rounded,
+    bool danger = false}) async {
+  final result = await showModalBottomSheet<bool>(
+    context: context,
+    showDragHandle: true,
+    builder: (_) => Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          EmptyStateCard(
+            icon: icon,
+            title: title,
+            subtitle: message,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: SecondaryButton(
+                    label: 'Cancel',
+                    icon: Icons.close_rounded,
+                    onTap: () => Navigator.pop(context, false)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: PrimaryButton(
+                    label: confirmLabel,
+                    icon: danger ? Icons.delete_rounded : Icons.check_rounded,
+                    onTap: () => Navigator.pop(context, true)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+  return result ?? false;
+}
+
+void showSuccessSheet(BuildContext context,
+    {required String title,
+    required String message,
+    required String primaryLabel,
+    required IconData primaryIcon,
+    required VoidCallback onPrimary,
+    String? secondaryLabel,
+    IconData? secondaryIcon,
+    VoidCallback? onSecondary}) {
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (_) => Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          EmptyStateCard(
+              icon: Icons.check_circle_rounded,
+              title: title,
+              subtitle: message),
+          PrimaryButton(
+              label: primaryLabel,
+              icon: primaryIcon,
+              onTap: () {
+                Navigator.pop(context);
+                onPrimary();
+              }),
+          if (secondaryLabel != null &&
+              secondaryIcon != null &&
+              onSecondary != null) ...[
+            const SizedBox(height: 12),
+            SecondaryButton(
+                label: secondaryLabel,
+                icon: secondaryIcon,
+                onTap: () {
+                  Navigator.pop(context);
+                  onSecondary();
+                }),
+          ],
+        ],
+      ),
+    ),
+  );
+}

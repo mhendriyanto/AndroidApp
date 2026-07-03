@@ -6,6 +6,8 @@ enum MockType { receipt, chat, chart, travel }
 
 enum TimerPreset {
   keep('Keep', 'No timer', Icons.bookmark_rounded, null),
+  tenMinutes('10 minutes', 'Very quick', Icons.flash_on_rounded,
+      Duration(minutes: 10)),
   thirtyMinutes(
       '30 minutes', 'Quick use', Icons.bolt_rounded, Duration(minutes: 30)),
   oneHour('1 hour', 'Temporary', Icons.schedule_rounded, Duration(hours: 1)),
@@ -21,9 +23,19 @@ enum TimerPreset {
   final Duration? duration;
 
   const TimerPreset(this.label, this.subtitle, this.icon, this.duration);
+
+  String get shortLabel {
+    return switch (this) {
+      TimerPreset.tenMinutes => '10 min',
+      TimerPreset.thirtyMinutes => '30 min',
+      _ => label,
+    };
+  }
 }
 
 enum SnapStatus { active, kept, deleted }
+
+const Object _unset = Object();
 
 class SnapItem {
   final String id;
@@ -33,6 +45,7 @@ class SnapItem {
   final String? imagePath;
   final DateTime createdAt;
   final DateTime? expiresAt;
+  final DateTime? resumeExpiresAt;
   final SnapStatus status;
 
   const SnapItem({
@@ -43,6 +56,7 @@ class SnapItem {
     this.imagePath,
     required this.createdAt,
     required this.expiresAt,
+    this.resumeExpiresAt,
     required this.status,
   });
 
@@ -52,7 +66,8 @@ class SnapItem {
     MockType? type,
     String? imagePath,
     DateTime? createdAt,
-    DateTime? expiresAt,
+    Object? expiresAt = _unset,
+    Object? resumeExpiresAt = _unset,
     SnapStatus? status,
   }) {
     return SnapItem(
@@ -62,13 +77,17 @@ class SnapItem {
       type: type ?? this.type,
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
-      expiresAt: expiresAt ?? this.expiresAt,
+      expiresAt: expiresAt == _unset ? this.expiresAt : expiresAt as DateTime?,
+      resumeExpiresAt: resumeExpiresAt == _unset
+          ? this.resumeExpiresAt
+          : resumeExpiresAt as DateTime?,
       status: status ?? this.status,
     );
   }
 
   bool get isTimed => expiresAt != null;
   bool get isKept => status == SnapStatus.kept || expiresAt == null;
+  bool get isSnoozed => resumeExpiresAt != null;
 
   Duration? remaining(DateTime now) => expiresAt?.difference(now);
 
@@ -145,6 +164,33 @@ class ImportTimerOption {
       subtitle: preset.subtitle,
       icon: preset.icon,
       duration: preset.duration,
+    );
+  }
+}
+
+class SavedFolder {
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final List<String> snapIds;
+
+  const SavedFolder({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    this.snapIds = const [],
+  });
+
+  SavedFolder copyWith({
+    String? name,
+    DateTime? createdAt,
+    List<String>? snapIds,
+  }) {
+    return SavedFolder(
+      id: id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      snapIds: snapIds ?? this.snapIds,
     );
   }
 }

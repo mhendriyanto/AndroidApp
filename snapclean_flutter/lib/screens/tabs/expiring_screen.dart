@@ -83,6 +83,7 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
   List<_ExpiringFilterTab> _tabs(AppController controller) {
     return [
       const _ExpiringFilterTab(label: 'All'),
+      const _ExpiringFilterTab(label: '10m', duration: Duration(minutes: 10)),
       const _ExpiringFilterTab(label: '30m', duration: Duration(minutes: 30)),
       const _ExpiringFilterTab(label: '1h', duration: Duration(hours: 1)),
       for (final timer in controller.customImportTimers)

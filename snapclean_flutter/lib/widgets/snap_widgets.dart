@@ -78,7 +78,7 @@ class _SnapItemCardState extends State<SnapItemCard> {
     return GestureDetector(
       onTap: widget.onTap,
       child: AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(13),
         child: Column(
           children: [
             Row(
@@ -112,12 +112,14 @@ class _SnapItemCardState extends State<SnapItemCard> {
                               color: AppColors.muted)),
                       if (progress != null) ...[
                         const SizedBox(height: 12),
-                        LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(999),
-                            backgroundColor: AppColors.line,
-                            color: widget.item.progressColor(now)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: const Color(0xFFEFF6FF),
+                              color: widget.item.progressColor(now)),
+                        ),
                       ],
                     ],
                   ),
@@ -156,8 +158,14 @@ class HeroClean extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-            colors: [Color(0xFF083344), AppColors.brandDark, Color(0xFF22D3EE)],
+        gradient: LinearGradient(
+            colors: urgent
+                ? const [Color(0xFF4C0519), AppColors.rose, Color(0xFFF97316)]
+                : const [
+                    Color(0xFF0F172A),
+                    AppColors.brandDark,
+                    Color(0xFF22D3EE)
+                  ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         boxShadow: const [
@@ -319,10 +327,14 @@ class MetricBox extends StatelessWidget {
 }
 
 class DonutCard extends StatelessWidget {
-  const DonutCard({super.key});
+  final int total;
+  final List<TimerMixSegment> segments;
+  const DonutCard({required this.total, required this.segments, super.key});
 
   @override
   Widget build(BuildContext context) {
+    final safeSegments =
+        segments.where((segment) => segment.count > 0).toList();
     return AppCard(
       child: Column(
         children: [
@@ -331,17 +343,17 @@ class DonutCard extends StatelessWidget {
               height: 154,
               child: RepaintBoundary(
                 child: CustomPaint(
-                    painter: DonutPainter(),
-                    child: const Center(
+                    painter: DonutPainter(segments: safeSegments),
+                    child: Center(
                         child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                          Text('76',
-                              style: TextStyle(
+                          Text('$total',
+                              style: const TextStyle(
                                   fontSize: 30,
                                   height: 1,
                                   fontWeight: FontWeight.w900)),
-                          Text('shots', style: AppText.label)
+                          const Text('shots', style: AppText.label)
                         ]))),
               )),
           const SizedBox(height: 18),
@@ -351,11 +363,11 @@ class DonutCard extends StatelessWidget {
             padding: EdgeInsets.zero,
             childAspectRatio: 5.2,
             physics: const NeverScrollableScrollPhysics(),
-            children: const [
-              LegendItem(color: AppColors.brand, label: '30 min'),
-              LegendItem(color: Color(0xFF22C55E), label: '1 hour'),
-              LegendItem(color: Color(0xFFF59E0B), label: 'Tomorrow'),
-              LegendItem(color: Color(0xFFE2E8F0), label: 'Keep'),
+            children: [
+              for (final segment in segments)
+                LegendItem(
+                    color: segment.color,
+                    label: '${segment.label} (${segment.count})'),
             ],
           ),
         ],
@@ -364,7 +376,18 @@ class DonutCard extends StatelessWidget {
   }
 }
 
+class TimerMixSegment {
+  final Color color;
+  final String label;
+  final int count;
+  const TimerMixSegment(
+      {required this.color, required this.label, required this.count});
+}
+
 class DonutPainter extends CustomPainter {
+  final List<TimerMixSegment> segments;
+  const DonutPainter({required this.segments});
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -372,16 +395,16 @@ class DonutPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 24
       ..strokeCap = StrokeCap.butt;
+    if (segments.isEmpty) {
+      paint.color = const Color(0xFFE2E8F0);
+      canvas.drawArc(rect.deflate(12), -math.pi / 2, math.pi * 2, false, paint);
+      return;
+    }
+    final total = segments.fold<int>(0, (sum, segment) => sum + segment.count);
     double start = -math.pi / 2;
-    final segments = [
-      (AppColors.brand, .50),
-      (const Color(0xFF22C55E), .18),
-      (const Color(0xFFF59E0B), .18),
-      (const Color(0xFFE2E8F0), .14)
-    ];
     for (final segment in segments) {
-      paint.color = segment.$1;
-      final sweep = math.pi * 2 * segment.$2;
+      paint.color = segment.color;
+      final sweep = math.pi * 2 * (segment.count / total);
       canvas.drawArc(rect.deflate(12), start, sweep, false, paint);
       start += sweep;
     }

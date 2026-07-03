@@ -4,7 +4,6 @@ import '../../models/snap_item.dart';
 import '../../state/app_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
-import '../../widgets/snap_widgets.dart';
 import '../auth/sign_in_screen.dart';
 import '../tabs/settings_screen.dart';
 
@@ -20,8 +19,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = SnapCleanScope.of(context);
-    final user = controller.user;
+    final user = SnapCleanScope.of(context).user;
     return Scaffold(
       body: AppPage(
         eyebrow: 'Account',
@@ -59,26 +57,54 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            MetricRow(items: [
-              ('${controller.cleanedCount}', 'deleted'),
-              ('1.8GB', 'saved'),
-              ('${controller.keptCount}', 'kept')
-            ]),
-            const SectionHeader(title: 'Timer mix', action: 'Usage'),
-            const DonutCard(),
-            const SectionHeader(title: 'Account', action: 'Edit'),
+            const SectionHeader(title: 'Account', action: ''),
             AppCard(
               child: Column(
                 children: [
-                  const StaticSettingsRow(
-                      icon: Icons.cloud_rounded,
-                      title: 'Local sync',
-                      subtitle: 'Preview only'),
+                  StaticSettingsRowButton(
+                    icon: Icons.person_outline_rounded,
+                    title: 'Personal information',
+                    subtitle: 'Name, email, and username',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const EditProfileScreen())),
+                  ),
                   const Divider(height: 24),
-                  const StaticSettingsRow(
-                      icon: Icons.shield_rounded,
-                      title: 'Privacy',
-                      subtitle: 'Imported shots only'),
+                  StaticSettingsRowButton(
+                    icon: Icons.lock_outline_rounded,
+                    title: 'Sign-in & security',
+                    subtitle: 'Password and device access preview',
+                    onTap: () => _showPreviewOnly(context),
+                  ),
+                  const Divider(height: 24),
+                  StaticSettingsRowButton(
+                    icon: Icons.notifications_none_rounded,
+                    title: 'Notifications',
+                    subtitle: 'Cleanup reminders and alerts',
+                    onTap: () => _showPreviewOnly(context),
+                  ),
+                  const Divider(height: 24),
+                  StaticSettingsRowButton(
+                    icon: Icons.shield_outlined,
+                    title: 'Privacy',
+                    subtitle: 'Photo access and local data rules',
+                    onTap: () => _showPreviewOnly(context),
+                  ),
+                  const Divider(height: 24),
+                  StaticSettingsRowButton(
+                    icon: Icons.storage_rounded,
+                    title: 'Data & storage',
+                    subtitle: 'Recently deleted and cache controls',
+                    onTap: () => _showPreviewOnly(context),
+                  ),
+                  const Divider(height: 24),
+                  StaticSettingsRowButton(
+                    icon: Icons.help_outline_rounded,
+                    title: 'Help & support',
+                    subtitle: 'FAQ and contact preview',
+                    onTap: () => _showPreviewOnly(context),
+                  ),
                   const Divider(height: 24),
                   StaticSettingsRowButton(
                     icon: Icons.logout_rounded,
@@ -92,6 +118,12 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPreviewOnly(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Preview only for now.')),
     );
   }
 }

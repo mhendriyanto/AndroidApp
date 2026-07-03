@@ -48,14 +48,30 @@ void main() {
     expect(find.text('Profile'), findsOneWidget);
   });
 
-  testWidgets('Expiring 30m filter hides screenshots over 30 minutes',
+  testWidgets('Home shows search, stats, and recent documents', (tester) async {
+    await tester.pumpWidget(const SnapCleanApp());
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search screenshots'), findsOneWidget);
+    expect(find.text('3'), findsWidgets);
+    expect(find.text('cleaned'), findsNothing);
+    expect(find.text('space saved'), findsNothing);
+    expect(find.text('kept'), findsNothing);
+    expect(find.text('Recents'), findsOneWidget);
+    expect(find.text('Order confirmation'), findsOneWidget);
+    expect(find.text('Message thread'), findsOneWidget);
+  });
+
+  testWidgets('Timers 30m filter hides screenshots over 30 minutes',
       (tester) async {
     await tester.pumpWidget(const SnapCleanApp());
 
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Expire'));
+    await tester.tap(find.text('Timers'));
     await tester.pumpAndSettle();
     expect(find.text('Order confirmation'), findsOneWidget);
     expect(find.text('Message thread'), findsOneWidget);
@@ -67,16 +83,18 @@ void main() {
     expect(find.text('Message thread'), findsNothing);
   });
 
-  testWidgets('Expiring screen hides cleanup message while items remain',
+  testWidgets('Timers screen combines active and expiring functions',
       (tester) async {
     await tester.pumpWidget(const SnapCleanApp());
 
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Expire'));
+    await tester.tap(find.text('Timers'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Timers'), findsOneWidget);
+    expect(find.text('Expiring'), findsNothing);
     expect(find.text('Order confirmation'), findsOneWidget);
     expect(find.text('After cleanup'), findsNothing);
     expect(find.text('All clean'), findsNothing);
@@ -88,7 +106,7 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add screenshot'));
@@ -98,13 +116,42 @@ void main() {
     expect(find.text('Choose from emulator'), findsOneWidget);
   });
 
+  testWidgets('Import includes 10 minute timer and separate forever option',
+      (tester) async {
+    await tester.pumpWidget(const SnapCleanApp());
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('10 minutes'), findsOneWidget);
+    expect(find.text('Save forever'), findsOneWidget);
+    expect(find.text('Forever'), findsOneWidget);
+  });
+
+  testWidgets('Saved tab shows forever shots', (tester) async {
+    await tester.pumpWidget(const SnapCleanApp());
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Saved'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Forever shots'), findsOneWidget);
+    expect(find.text('Travel QR code'), findsOneWidget);
+    expect(find.text('1 saved'), findsOneWidget);
+  });
+
   testWidgets('Import shows guided workflow steps', (tester) async {
     await tester.pumpWidget(const SnapCleanApp());
 
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     expect(find.text('Images'), findsOneWidget);
@@ -112,13 +159,13 @@ void main() {
     expect(find.text('Review'), findsOneWidget);
   });
 
-  testWidgets('Active cards open screenshot detail', (tester) async {
+  testWidgets('Timer cards open screenshot detail', (tester) async {
     await tester.pumpWidget(const SnapCleanApp());
 
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Active'));
+    await tester.tap(find.text('Timers'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Order confirmation'));
@@ -134,7 +181,7 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Custom'));
@@ -157,7 +204,7 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Custom'));
@@ -183,14 +230,13 @@ void main() {
     expect(find.text('15 minutes'), findsOneWidget);
   });
 
-  testWidgets('custom import timers appear in Active and Expiring tabs',
-      (tester) async {
+  testWidgets('custom import timers appear in Timers tabs', (tester) async {
     await tester.pumpWidget(const SnapCleanApp());
 
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Custom'));
@@ -203,11 +249,7 @@ void main() {
     await tester.tap(find.text('Add timer'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Active'));
-    await tester.pumpAndSettle();
-    expect(find.text('Lunch timer'), findsOneWidget);
-
-    await tester.tap(find.text('Expire'));
+    await tester.tap(find.text('Timers'));
     await tester.pumpAndSettle();
     expect(find.text('Lunch timer'), findsOneWidget);
   });
