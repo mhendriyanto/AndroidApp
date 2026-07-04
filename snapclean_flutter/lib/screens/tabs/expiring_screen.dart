@@ -115,10 +115,7 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
     if (tab.today) {
       return controller.activeSnaps.where((item) {
         final left = item.remaining(now);
-        final expiresAt = item.expiresAt;
-        if (expiresAt == null || expiresAt.isBefore(now)) return false;
-        if (!_isAfterMin(left, tab.min)) return false;
-        return expiresAt.isBefore(_startOfTomorrow(now));
+        return _isAfterMin(left, tab.min);
       }).toList();
     }
     final max = tab.max;
@@ -138,11 +135,6 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
   bool _isAfterMin(Duration? left, Duration? min) {
     if (left == null || left.isNegative) return false;
     return min == null || left > min;
-  }
-
-  DateTime _startOfTomorrow(DateTime now) {
-    final tomorrow = now.add(const Duration(days: 1));
-    return DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
   }
 
   Duration? _rangeStartFor(Duration duration) {

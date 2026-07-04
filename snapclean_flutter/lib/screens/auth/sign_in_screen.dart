@@ -60,6 +60,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 PrimaryButton(
                   label: isLoading ? 'Signing in...' : 'Sign in',
                   icon: Icons.lock_rounded,
+                  showIcon: false,
                   onTap: isLoading ? () {} : _signIn,
                 ),
                 const SizedBox(height: 16),

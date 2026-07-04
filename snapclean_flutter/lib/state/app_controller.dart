@@ -232,6 +232,8 @@ class AppController extends ChangeNotifier {
           type: types[index % types.length],
           title: 'Imported image ${index + 1}',
           imagePath: imagePaths[index],
+          timerMinutes: selectedImportTimer.duration?.inMinutes,
+          timerLabel: selectedImportTimer.label,
         )
     ];
     notifyListeners();
@@ -239,6 +241,33 @@ class AppController extends ChangeNotifier {
 
   void selectImportTimer(ImportTimerOption timer) {
     selectedImportTimer = timer;
+    importDraft = [
+      for (final draft in importDraft)
+        draft.copyWith(
+          timerMinutes: timer.duration?.inMinutes,
+          timerLabel: timer.duration == null ? null : timer.label,
+        )
+    ];
+    notifyListeners();
+  }
+
+  void setImportDraftTimer(int index, ImportTimerOption timer) {
+    final duration = timer.duration;
+    if (index < 0 || index >= importDraft.length || duration == null) {
+      return;
+    }
+    importDraft = [
+      for (int itemIndex = 0; itemIndex < importDraft.length; itemIndex++)
+        itemIndex == index
+            ? importDraft[itemIndex].copyWith(
+                timerMinutes: duration.inMinutes,
+                timerLabel: timer.label,
+              )
+            : importDraft[itemIndex]
+    ];
+    if (selectedImportTimer.duration == null) {
+      selectedImportTimer = timer;
+    }
     notifyListeners();
   }
 
@@ -255,6 +284,13 @@ class AppController extends ChangeNotifier {
     );
     customImportTimers = [...customImportTimers, option];
     selectedImportTimer = option;
+    importDraft = [
+      for (final draft in importDraft)
+        draft.copyWith(
+          timerMinutes: option.duration?.inMinutes,
+          timerLabel: option.label,
+        )
+    ];
     _saveTimerToCloud(option);
     notifyListeners();
   }
@@ -286,6 +322,13 @@ class AppController extends ChangeNotifier {
     ];
     if (selectedImportTimer.id == id || existing == null) {
       selectedImportTimer = option;
+      importDraft = [
+        for (final draft in importDraft)
+          draft.copyWith(
+            timerMinutes: option.duration?.inMinutes,
+            timerLabel: option.label,
+          )
+      ];
     }
     _saveTimerToCloud(option);
     notifyListeners();
@@ -309,6 +352,8 @@ class AppController extends ChangeNotifier {
     final now = DateTime.now();
     final saved = <SnapItem>[];
     for (final draft in importDraft) {
+      final minutes =
+          draft.timerMinutes ?? selectedImportTimer.duration?.inMinutes;
       final item = SnapItem(
         id: '${draft.type.name}-${now.microsecondsSinceEpoch}-${saved.length}',
         title: draft.title,
@@ -318,12 +363,8 @@ class AppController extends ChangeNotifier {
         type: draft.type,
         imagePath: draft.imagePath,
         createdAt: now,
-        expiresAt: selectedImportTimer.duration == null
-            ? null
-            : now.add(selectedImportTimer.duration!),
-        status: selectedImportTimer.duration == null
-            ? SnapStatus.kept
-            : SnapStatus.active,
+        expiresAt: minutes == null ? null : now.add(Duration(minutes: minutes)),
+        status: minutes == null ? SnapStatus.kept : SnapStatus.active,
       );
       saved.add(item);
     }

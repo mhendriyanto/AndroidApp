@@ -74,6 +74,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                             : 'Searching...'
                         : widget.button,
                     icon: widget.icon,
+                    showIcon: false,
                     onTap: isLoading ? () {} : _showRecoveryResult),
                 const SizedBox(height: 18),
                 LinkText('Back to sign in',

@@ -277,8 +277,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _pickProfilePhoto() async {
     setState(() => pickingPhoto = true);
     try {
-      final images =
-          await _imageImportChannel.invokeListMethod<String>('pickImages');
+      final images = await _imageImportChannel.invokeListMethod<String>(
+        'pickImages',
+        {'maxItems': 1},
+      );
       if (!mounted) return;
       if (images == null || images.isEmpty) {
         setState(() => pickingPhoto = false);

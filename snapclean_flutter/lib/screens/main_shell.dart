@@ -20,7 +20,10 @@ class _MainShellState extends State<MainShell> {
   AppController? controller;
   int lastNoticeId = 0;
 
-  void selectTab(int next) => setState(() => index = next);
+  void selectTab(int next) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => index = next);
+  }
 
   @override
   void didChangeDependencies() {
@@ -62,20 +65,6 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       body: IndexedStack(index: index, children: pages),
       extendBody: true,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: index == 0 || index == 1 || index == 2
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 0, right: 0),
-              child: FloatingActionButton(
-                heroTag: 'import-fab-$index',
-                elevation: 9,
-                backgroundColor: AppColors.brand,
-                foregroundColor: Colors.white,
-                onPressed: () => selectTab(4),
-                child: const Icon(Icons.add_rounded, size: 31),
-              ),
-            )
-          : null,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -105,6 +94,9 @@ class _MainShellState extends State<MainShell> {
                   label: 'Timers',
                   active: index == 1,
                   onTap: () => selectTab(1)),
+              ImportNavButton(
+                  active: index == 4,
+                  onTap: () => selectTab(4)),
               NavItem(
                   icon: Icons.bookmark_rounded,
                   label: 'Saved',
@@ -116,6 +108,41 @@ class _MainShellState extends State<MainShell> {
                   active: index == 3,
                   onTap: () => selectTab(3)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ImportNavButton extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+  const ImportNavButton({required this.active, required this.onTap, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.brand,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: AppColors.brand.withOpacity(active ? .28 : .18),
+                    blurRadius: active ? 18 : 12,
+                    offset: const Offset(0, 6))
+              ],
+            ),
+            child: const Icon(Icons.add_rounded,
+                color: Colors.white, size: 30),
           ),
         ),
       ),

@@ -56,41 +56,48 @@ class AppPage extends StatelessWidget {
     final titleStyle = background.isDark
         ? AppText.title.copyWith(color: Colors.white)
         : AppText.title;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: background.colors,
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTapDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: background.colors,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 112),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 14)],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_titleCase(title), style: titleStyle),
-                      ],
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: scrollable ? null : const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 112),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (leading != null) ...[
+                      leading!,
+                      const SizedBox(width: 14)
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_titleCase(title), style: titleStyle),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (trailing != null) ...[
-                    const SizedBox(width: 14),
-                    trailing!
+                    if (trailing != null) ...[
+                      const SizedBox(width: 14),
+                      trailing!
+                    ],
                   ],
-                ],
-              ),
-              const SizedBox(height: 16),
-              child,
-            ],
+                ),
+                const SizedBox(height: 16),
+                child,
+              ],
+            ),
           ),
         ),
       ),
@@ -187,10 +194,12 @@ class PrimaryButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+  final bool showIcon;
   const PrimaryButton(
       {required this.label,
       required this.icon,
       required this.onTap,
+      this.showIcon = true,
       super.key});
 
   @override
@@ -198,17 +207,30 @@ class PrimaryButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 54,
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(
-            backgroundColor: AppColors.brand,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18))),
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
-      ),
+      child: showIcon
+          ? FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18))),
+              onPressed: onTap,
+              icon: Icon(icon, size: 18),
+              label: Text(label,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w900)),
+            )
+          : FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18))),
+              onPressed: onTap,
+              child: Text(label,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w900)),
+            ),
     );
   }
 }

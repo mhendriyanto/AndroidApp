@@ -70,6 +70,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 PrimaryButton(
                   label: isLoading ? 'Creating account...' : 'Create account',
                   icon: Icons.person_add_alt_1_rounded,
+                  showIcon: false,
                   onTap: isLoading ? () {} : _createAccount,
                 ),
                 const SizedBox(height: 18),

@@ -665,31 +665,74 @@ class PrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SettingsDetailPage(
-      title: 'Privacy',
+      title: 'Privacy Policy',
       icon: Icons.privacy_tip_outlined,
-      summary: 'How SnapClean handles selected screenshots.',
+      summary: 'Last updated: July 2026',
       children: [
         SettingsNoteCard(
           icon: Icons.lock_outline_rounded,
-          title: 'User-selected images',
+          title: 'SnapClean Privacy Policy',
           subtitle:
-              'Only screenshots you choose enter SnapClean.',
+              'SnapClean helps users manage screenshots by importing selected images, applying timers, saving screenshots to folders, and restoring recently deleted items.',
         ),
-        SettingsGroup(children: [
-          StaticSettingsRow(
-              icon: Icons.photo_library_rounded,
-              title: 'Selected images',
-              subtitle: 'Only user-selected images enter the app'),
-          StaticSettingsRow(
-              icon: Icons.delete_sweep_rounded,
-              title: 'Cleanup timers',
-              subtitle: 'Timers control when screenshots are cleaned up'),
-          StaticSettingsRow(
-              icon: Icons.cloud_done_rounded,
-              title: 'Account storage',
-              subtitle: 'Saved screenshots can sync with your account'),
-        ]),
+        PrivacyPolicySection(
+          title: 'Information We Collect',
+          body:
+              'SnapClean collects the information needed to provide the app: account email and username, user-selected screenshots, screenshot metadata such as names, folders, timer status, and timestamps, and app preferences such as theme, default timer, cleanup behavior, and reminder settings.\n\nSnapClean does not scan your full photo library. Screenshots enter the app only when you select them through the device photo picker.',
+        ),
+        PrivacyPolicySection(
+          title: 'How Information Is Used',
+          body:
+              'Information is used to sign users into their account, sync saved screenshots and folders, restore account data after reinstall or device changes, run screenshot timers and cleanup workflows, and support password reset and username recovery.',
+        ),
+        PrivacyPolicySection(
+          title: 'Storage',
+          body:
+              'SnapClean uses Firebase Authentication for accounts, Cloud Firestore for metadata and settings, and Firebase Storage for selected screenshot files.\n\nLocal copies may also be kept on the device so screenshots can load quickly in the app.',
+        ),
+        PrivacyPolicySection(
+          title: 'Deletion',
+          body:
+              'Users can delete screenshots in the app. Deleted screenshots appear in Recently Deleted where they can be restored. A future permanent deletion control should remove the screenshot metadata and associated storage object.\n\nUsers who need account or data deletion should contact the app support contact listed on the store page.',
+        ),
+        PrivacyPolicySection(
+          title: 'Data Sharing',
+          body:
+              'SnapClean does not sell user data. Data is stored only to operate the app account sync, screenshot archive, and cleanup features.',
+        ),
+        PrivacyPolicySection(
+          title: 'Contact',
+          body:
+              'For privacy questions, use the support contact listed on the app store page.',
+        ),
       ],
+    );
+  }
+}
+
+class PrivacyPolicySection extends StatelessWidget {
+  final String title;
+  final String body;
+  const PrivacyPolicySection({
+    required this.title,
+    required this.body,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppText.value),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: AppText.label.copyWith(height: 1.45),
+          ),
+        ],
+      ),
     );
   }
 }

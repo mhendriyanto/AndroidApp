@@ -171,12 +171,33 @@ class ImportDraftItem {
   final MockType type;
   final String? imagePath;
   final String title;
+  final int? timerMinutes;
+  final String? timerLabel;
 
   const ImportDraftItem({
     required this.type,
     required this.title,
     this.imagePath,
+    this.timerMinutes,
+    this.timerLabel,
   });
+
+  ImportDraftItem copyWith({
+    MockType? type,
+    String? imagePath,
+    String? title,
+    Object? timerMinutes = _unset,
+    Object? timerLabel = _unset,
+  }) {
+    return ImportDraftItem(
+      type: type ?? this.type,
+      imagePath: imagePath ?? this.imagePath,
+      title: title ?? this.title,
+      timerMinutes:
+          timerMinutes == _unset ? this.timerMinutes : timerMinutes as int?,
+      timerLabel: timerLabel == _unset ? this.timerLabel : timerLabel as String?,
+    );
+  }
 }
 
 class ImportTimerOption {

@@ -9,6 +9,8 @@ import '../../widgets/mock_screenshot.dart';
 import '../../widgets/snap_widgets.dart';
 import '../snap_detail_screen.dart';
 
+const int customTimerDropdownValue = -1;
+
 class ImportScreen extends StatelessWidget {
   final VoidCallback onViewActive;
   final VoidCallback onViewSaved;
@@ -23,6 +25,8 @@ class ImportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = SnapCleanScope.of(context);
     final draft = controller.importDraft;
+    final timerOptions = _timerOptions(controller);
+    final canChoosePerScreenshotTimer = draft.isNotEmpty;
     return AppPage(
       eyebrow: 'Photos',
       title: 'Import',
@@ -54,6 +58,55 @@ class ImportScreen extends StatelessWidget {
                   SmallSquareMock(type: item.type, imagePath: item.imagePath),
               ],
             ),
+          if (canChoosePerScreenshotTimer) ...[
+            SectionHeader(
+                title: 'Timers For Each Screenshot',
+                action: '${draft.length} choices'),
+            for (int index = 0; index < draft.length; index++)
+              AppCard(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: SmallSquareMock(
+                        type: draft[index].type,
+                        imagePath: draft[index].imagePath,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Screenshot ${index + 1}',
+                              style: AppText.value.copyWith(fontSize: 15)),
+                          const SizedBox(height: 8),
+                          _PerScreenshotTimerMenu(
+                            value: _timerMinutesForDraft(
+                                controller, draft[index], timerOptions),
+                            options: timerOptions,
+                            onChanged: (minutes) {
+                              if (minutes == customTimerDropdownValue) {
+                                _openCustomDraftTimer(
+                                    context, controller, index);
+                                return;
+                              }
+                              final timer = _timerForMinutes(
+                                  timerOptions, minutes);
+                              if (timer != null) {
+                                controller.setImportDraftTimer(index, timer);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
           SectionHeader(
               title: 'Save',
               action:
@@ -66,64 +119,17 @@ class ImportScreen extends StatelessWidget {
             onTap: () => controller.selectImportTimer(
                 ImportTimerOption.fromPreset(TimerPreset.forever)),
           ),
-          SectionHeader(
-              title: 'Custom Timer',
-              action: controller.selectedImportTimer.id.startsWith('one-time-')
-                  ? 'Selected'
-                  : ''),
-          CustomTimerOptionCard(
-            active: controller.selectedImportTimer.id.startsWith('one-time-'),
-            timer: controller.selectedImportTimer.id.startsWith('one-time-')
-                ? controller.selectedImportTimer
-                : null,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const OneTimeTimerScreen()),
-            ),
-          ),
-          SectionHeader(
-            title: 'Choose Default Timer',
-            action: 'Add Timer',
-            onAction: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddTimerScreen()),
-            ),
-          ),
-          GridView.count(
-            padding: EdgeInsets.zero,
-            crossAxisCount: 2,
-            crossAxisSpacing: 11,
-            mainAxisSpacing: 11,
-            childAspectRatio: 1.25,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              for (final timer in controller.importTimerOptions)
-                TimerTile(
-                  icon: timer.icon,
-                  title: timer.label,
-                  subtitle: timer.subtitle,
-                  active: timer.id == controller.selectedImportTimer.id,
-                  onTap: timer.isCustom
-                      ? () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => AddTimerScreen(timer: timer)),
-                          )
-                      : () => controller.selectImportTimer(timer),
-                ),
-            ],
-          ),
           const SizedBox(height: 20),
           if (draft.isNotEmpty)
             ImportReviewCard(
-              count: draft.length,
-              timer: controller.selectedImportTimer,
+              subtitle: _reviewSubtitle(controller, draft),
             ),
           PrimaryButton(
             label: controller.selectedImportTimer.id == TimerPreset.forever.name
                 ? 'Save'
-                : 'Save timer',
+                : draft.length == 1
+                    ? 'Save Timer'
+                    : 'Save Timers',
             icon: controller.selectedImportTimer.id == TimerPreset.forever.name
                 ? Icons.bookmark_rounded
                 : Icons.hourglass_bottom_rounded,
@@ -153,6 +159,104 @@ class ImportScreen extends StatelessWidget {
       context,
       MaterialPageRoute(builder: (_) => const ImageImportScreen()),
     );
+  }
+
+  List<ImportTimerOption> _timerOptions(AppController controller) {
+    final optionsByMinutes = <int, ImportTimerOption>{};
+    for (final timer in [
+      ...controller.importTimerOptions,
+      controller.selectedImportTimer,
+    ]) {
+      final minutes = timer.duration?.inMinutes;
+      if (minutes != null) optionsByMinutes.putIfAbsent(minutes, () => timer);
+    }
+    for (final draft in controller.importDraft) {
+      final minutes = draft.timerMinutes;
+      if (minutes != null) {
+        optionsByMinutes.putIfAbsent(
+          minutes,
+          () => ImportTimerOption(
+            id: 'draft-$minutes',
+            label: _durationLabel(minutes),
+            subtitle: 'Selected timer',
+            icon: Icons.timer_rounded,
+            duration: Duration(minutes: minutes),
+          ),
+        );
+      }
+    }
+    final options = optionsByMinutes.values.toList();
+    options.sort((a, b) => a.duration!.compareTo(b.duration!));
+    return options;
+  }
+
+  int _timerMinutesForDraft(
+    AppController controller,
+    ImportDraftItem draft,
+    List<ImportTimerOption> timerOptions,
+  ) {
+    final minutes = draft.timerMinutes ??
+        controller.selectedImportTimer.duration?.inMinutes ??
+        timerOptions.first.duration!.inMinutes;
+    return timerOptions.any((timer) => timer.duration!.inMinutes == minutes)
+        ? minutes
+        : timerOptions.first.duration!.inMinutes;
+  }
+
+  ImportTimerOption? _timerForMinutes(
+      List<ImportTimerOption> timerOptions, int minutes) {
+    for (final timer in timerOptions) {
+      if (timer.duration?.inMinutes == minutes) return timer;
+    }
+    return null;
+  }
+
+  void _openCustomDraftTimer(
+    BuildContext context,
+    AppController controller,
+    int draftIndex,
+  ) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => _CustomDraftTimerDialog(
+        onSave: (totalMinutes) {
+          controller.setImportDraftTimer(
+            draftIndex,
+            ImportTimerOption(
+              id: 'draft-custom-$draftIndex-$totalMinutes',
+              label: _durationLabel(totalMinutes),
+              subtitle: 'Custom timer',
+              icon: Icons.timer_rounded,
+              duration: Duration(minutes: totalMinutes),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _durationLabel(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final remainder = minutes % 60;
+    if (remainder == 0) return hours == 1 ? '1 hr' : '$hours hr';
+    return '$hours hr $remainder min';
+  }
+
+  String _reviewSubtitle(
+      AppController controller, List<ImportDraftItem> draft) {
+    if (controller.selectedImportTimer.duration == null) {
+      return '${draft.length} images, saved forever';
+    }
+    final timerLabels = {
+      for (final item in draft)
+        item.timerLabel ?? controller.selectedImportTimer.label
+    };
+    if (timerLabels.length == 1) {
+      return '${draft.length} images, ${timerLabels.first}';
+    }
+    return '${draft.length} images, custom timers assigned';
   }
 }
 
@@ -201,6 +305,117 @@ class ForeverOptionCard extends StatelessWidget {
             Icon(
               active ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
               color: active ? AppColors.mint : const Color(0xFFCBD5E1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomDraftTimerDialog extends StatefulWidget {
+  final ValueChanged<int> onSave;
+  const _CustomDraftTimerDialog({
+    required this.onSave,
+  });
+
+  @override
+  State<_CustomDraftTimerDialog> createState() =>
+      _CustomDraftTimerDialogState();
+}
+
+class _CustomDraftTimerDialogState extends State<_CustomDraftTimerDialog> {
+  late final TextEditingController hours;
+  late final TextEditingController minutes;
+
+  @override
+  void initState() {
+    super.initState();
+    hours = TextEditingController();
+    minutes = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    hours.dispose();
+    minutes.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final totalMinutes = _customTimerMinutes(hours.text, minutes.text);
+    if (totalMinutes == null || totalMinutes <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Enter a valid timer. Minutes must be 0 to 59.')),
+      );
+      return;
+    }
+    widget.onSave(totalMinutes);
+    Navigator.pop(context);
+  }
+
+  int? _customTimerMinutes(String hoursText, String minutesText) {
+    final hourAmount =
+        int.tryParse(hoursText.trim().isEmpty ? '0' : hoursText.trim());
+    final minuteAmount =
+        int.tryParse(minutesText.trim().isEmpty ? '0' : minutesText.trim());
+    if (hourAmount == null || minuteAmount == null) return null;
+    if (hourAmount < 0 || minuteAmount < 0 || minuteAmount >= 60) return null;
+    return hourAmount * 60 + minuteAmount;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      backgroundColor: Colors.transparent,
+      child: AppCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SectionHeader(title: 'Custom Timer', action: ''),
+            Row(
+              children: [
+                Expanded(
+                  child: AppField(
+                    label: 'Hours',
+                    value: '',
+                    controller: hours,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppField(
+                    label: 'Minutes',
+                    value: '',
+                    controller: minutes,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: SecondaryButton(
+                    label: 'Cancel',
+                    icon: Icons.close_rounded,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Use Timer',
+                    icon: Icons.check_rounded,
+                    onTap: _save,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -363,9 +578,8 @@ class StepLine extends StatelessWidget {
 }
 
 class ImportReviewCard extends StatelessWidget {
-  final int count;
-  final ImportTimerOption timer;
-  const ImportReviewCard({required this.count, required this.timer, super.key});
+  final String subtitle;
+  const ImportReviewCard({required this.subtitle, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -389,11 +603,7 @@ class ImportReviewCard extends StatelessWidget {
               children: [
                 const Text('Ready to save', style: AppText.value),
                 const SizedBox(height: 3),
-                Text(
-                    timer.duration == null
-                        ? '$count images, saved forever'
-                        : '$count images, ${timer.label}',
-                    style: AppText.label),
+                Text(subtitle, style: AppText.label),
               ],
             ),
           ),
@@ -645,8 +855,10 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
   Future<void> _pickImages() async {
     setState(() => picking = true);
     try {
-      final images =
-          await _imageImportChannel.invokeListMethod<String>('pickImages');
+      final images = await _imageImportChannel.invokeListMethod<String>(
+        'pickImages',
+        {'maxItems': 50},
+      );
       if (!mounted) return;
       if (images == null || images.isEmpty) {
         setState(() => picking = false);
@@ -690,7 +902,7 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
                       'SnapClean only imports the images you select. It does not scan your gallery.',
                 ),
                 PrimaryButton(
-                  label: picking ? 'Opening picker' : 'Choose from Photos',
+                  label: picking ? 'Opening picker' : 'Choose Image',
                   icon: Icons.add_photo_alternate_rounded,
                   onTap: picking ? () {} : _pickImages,
                 ),
@@ -757,7 +969,7 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
     return Scaffold(
       body: AppPage(
         eyebrow: 'Saved',
-        title: 'Timer set',
+        title: 'Timer Set',
         leading: RoundIcon(
             icon: Icons.chevron_left_rounded,
             onTap: () => Navigator.pop(context)),
@@ -837,6 +1049,77 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
                 icon: Icons.add_rounded,
                 onTap: () => Navigator.pop(context)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PerScreenshotTimerMenu extends StatelessWidget {
+  final int value;
+  final List<ImportTimerOption> options;
+  final ValueChanged<int> onChanged;
+  const _PerScreenshotTimerMenu({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.soft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          items: [
+            for (final timer in options)
+              DropdownMenuItem<int>(
+                value: timer.duration!.inMinutes,
+                child: Row(
+                  children: [
+                    Icon(timer.icon, color: AppColors.brand, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        timer.label,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.value.copyWith(fontSize: 15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const DropdownMenuItem<int>(
+              value: customTimerDropdownValue,
+              child: Row(
+                children: [
+                  Icon(Icons.add_alarm_rounded,
+                      color: AppColors.brand, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Custom Timer',
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          onChanged: (next) {
+            if (next != null) onChanged(next);
+          },
         ),
       ),
     );

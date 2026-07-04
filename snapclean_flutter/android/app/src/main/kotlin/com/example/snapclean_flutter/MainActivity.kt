@@ -3,6 +3,8 @@ package com.example.snapclean_flutter
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -18,31 +20,50 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, imageImportChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "pickImages" -> pickImages(result)
+                    "pickImages" -> {
+                        val maxItems = call.argument<Int>("maxItems") ?: 50
+                        pickImages(result, maxItems)
+                    }
                     else -> result.notImplemented()
                 }
             }
     }
 
-    private fun pickImages(result: MethodChannel.Result) {
+    private fun pickImages(result: MethodChannel.Result, maxItems: Int) {
         if (pendingPickResult != null) {
             result.error("picker_busy", "The image picker is already open.", null)
             return
         }
         pendingPickResult = result
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "image/*"
-            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
+        val safeMaxItems = maxItems.coerceIn(1, 50)
+        val intent = createImagePickerIntent(safeMaxItems)
         try {
             startActivityForResult(intent, pickImagesRequest)
         } catch (error: Exception) {
             pendingPickResult = null
             result.error("picker_unavailable", error.message, null)
         }
+    }
+
+    private fun createImagePickerIntent(maxItems: Int): Intent {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val pickerMax = MediaStore.getPickImagesMaxLimit().coerceAtLeast(1)
+            return Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+                type = "image/*"
+                if (maxItems > 1) {
+                    putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, minOf(maxItems, pickerMax))
+                }
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxItems > 1)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        return intent
     }
 
     @Deprecated("Deprecated in Android API, still supported by FlutterActivity.")
