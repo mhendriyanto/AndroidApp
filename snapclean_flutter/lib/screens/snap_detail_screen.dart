@@ -42,6 +42,7 @@ class _SnapDetailScreenState extends State<SnapDetailScreen> {
                 aspectRatio: .72,
                 child: ImagePreview(
                   imagePath: item.imagePath,
+                  imageUrl: item.imageDownloadUrl,
                   fallback: MiniMock(type: item.type),
                 ),
               ),
@@ -70,11 +71,17 @@ class _SnapDetailScreenState extends State<SnapDetailScreen> {
               ),
               const SizedBox(height: 12),
               SecondaryButton(
-                label: 'Snooze 1 hour',
-                icon: Icons.schedule_rounded,
+                label: item.isSnoozed ? 'Unsnooze Timer' : 'Snooze Timer',
+                icon: item.isSnoozed
+                    ? Icons.play_arrow_rounded
+                    : Icons.schedule_rounded,
                 onTap: () {
-                  SnapCleanScope.of(context)
-                      .snoozeSnap(item.id, const Duration(hours: 1));
+                  if (item.isSnoozed) {
+                    SnapCleanScope.of(context).unsnoozeSnap(item.id);
+                  } else {
+                    SnapCleanScope.of(context)
+                        .snoozeSnap(item.id, const Duration(hours: 1));
+                  }
                   Navigator.pop(context);
                 },
               ),
@@ -94,65 +101,75 @@ class _SnapDetailScreenState extends State<SnapDetailScreen> {
   void _showActionSheet() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            EmptyStateCard(
-                icon: Icons.image_rounded,
-                title: item.title,
-                subtitle: item.isKept
-                    ? 'Archived screenshot'
-                    : 'Timer ${item.badge(DateTime.now())}'),
-            DetailActionTile(
-                icon: Icons.drive_file_rename_outline_rounded,
-                label: 'Rename',
-                onTap: () {
-                  Navigator.pop(context);
-                  _rename();
-                }),
-            DetailActionTile(
-                icon: Icons.timer_rounded,
-                label: 'Change timer',
-                onTap: () {
-                  Navigator.pop(context);
-                  _changeTimer();
-                }),
-            DetailActionTile(
-                icon: Icons.folder_rounded,
-                label: 'Add to folder',
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Choose a folder from Saved first.')),
-                  );
-                }),
-            DetailActionTile(
-                icon: Icons.bookmark_rounded,
-                label: 'Move to Archive',
-                onTap: () {
-                  Navigator.pop(context);
-                  SnapCleanScope.of(context).keepSnap(item.id);
-                  setState(() {
-                    item = item.copyWith(
-                        expiresAt: null,
-                        resumeExpiresAt: null,
-                        status: SnapStatus.kept,
-                        note: 'Saved for later.');
-                  });
-                }),
-            DetailActionTile(
-                icon: Icons.delete_outline_rounded,
-                label: 'Delete',
-                danger: true,
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDelete();
-                }),
-          ],
+      builder: (_) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .72,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EmptyStateCard(
+                    icon: Icons.image_rounded,
+                    title: item.title,
+                    subtitle: item.isKept
+                        ? 'Archived screenshot'
+                        : 'Timer ${item.badge(DateTime.now())}'),
+                DetailActionTile(
+                    icon: Icons.drive_file_rename_outline_rounded,
+                    label: 'Rename',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _rename();
+                    }),
+                DetailActionTile(
+                    icon: Icons.timer_rounded,
+                    label: 'Change timer',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _changeTimer();
+                    }),
+                DetailActionTile(
+                    icon: Icons.folder_rounded,
+                    label: 'Add to folder',
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Choose a folder from Saved first.')),
+                      );
+                    }),
+                DetailActionTile(
+                    icon: Icons.bookmark_rounded,
+                    label: 'Move to Archive',
+                    onTap: () {
+                      Navigator.pop(context);
+                      SnapCleanScope.of(context).keepSnap(item.id);
+                      setState(() {
+                        item = item.copyWith(
+                            expiresAt: null,
+                            resumeExpiresAt: null,
+                            snoozedRemainingSeconds: null,
+                            status: SnapStatus.kept,
+                            note: 'Saved for later.');
+                      });
+                    }),
+                DetailActionTile(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Delete',
+                    danger: true,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _confirmDelete();
+                    }),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -192,7 +209,7 @@ class _SnapDetailScreenState extends State<SnapDetailScreen> {
     final options = const [
       ('10 minutes', Duration(minutes: 10)),
       ('30 minutes', Duration(minutes: 30)),
-      ('1 hour', Duration(hours: 1)),
+      ('1 hr', Duration(hours: 1)),
       ('Tomorrow', Duration(days: 1)),
     ];
     showModalBottomSheet(
@@ -210,10 +227,15 @@ class _SnapDetailScreenState extends State<SnapDetailScreen> {
                 title: Text(option.$1,
                     style: const TextStyle(fontWeight: FontWeight.w900)),
                 onTap: () {
-                  SnapCleanScope.of(context).snoozeSnap(item.id, option.$2);
+                  SnapCleanScope.of(context)
+                      .setSnapTimer(item.id, option.$2, option.$1);
+                  final now = DateTime.now();
                   setState(() {
                     item = item.copyWith(
-                        expiresAt: DateTime.now().add(option.$2),
+                        createdAt: now,
+                        expiresAt: now.add(option.$2),
+                        resumeExpiresAt: null,
+                        snoozedRemainingSeconds: null,
                         status: SnapStatus.active,
                         note: 'Timer changed to ${option.$1}.');
                   });

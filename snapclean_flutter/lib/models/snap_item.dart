@@ -10,7 +10,7 @@ enum TimerPreset {
       Duration(minutes: 10)),
   thirtyMinutes(
       '30 minutes', 'Quick use', Icons.bolt_rounded, Duration(minutes: 30)),
-  oneHour('1 hour', 'Temporary', Icons.schedule_rounded, Duration(hours: 1)),
+  oneHour('1 hr', 'Temporary', Icons.schedule_rounded, Duration(hours: 1)),
   tonight(
       'Tonight', 'Later today', Icons.dark_mode_rounded, Duration(hours: 8)),
   tomorrow('Tomorrow', 'Review later', Icons.calendar_today_rounded,
@@ -35,6 +35,8 @@ enum TimerPreset {
 
 enum SnapStatus { active, kept, deleted }
 
+enum SnapSyncStatus { pending, syncing, synced, failed }
+
 const Object _unset = Object();
 
 class SnapItem {
@@ -43,10 +45,14 @@ class SnapItem {
   final String note;
   final MockType type;
   final String? imagePath;
+  final String? imageDownloadUrl;
+  final String? storagePath;
   final DateTime createdAt;
   final DateTime? expiresAt;
   final DateTime? resumeExpiresAt;
+  final int? snoozedRemainingSeconds;
   final SnapStatus status;
+  final SnapSyncStatus syncStatus;
 
   const SnapItem({
     required this.id,
@@ -54,10 +60,14 @@ class SnapItem {
     required this.note,
     required this.type,
     this.imagePath,
+    this.imageDownloadUrl,
+    this.storagePath,
     required this.createdAt,
     required this.expiresAt,
     this.resumeExpiresAt,
+    this.snoozedRemainingSeconds,
     required this.status,
+    this.syncStatus = SnapSyncStatus.pending,
   });
 
   SnapItem copyWith({
@@ -65,10 +75,14 @@ class SnapItem {
     String? note,
     MockType? type,
     String? imagePath,
+    String? imageDownloadUrl,
+    String? storagePath,
     DateTime? createdAt,
     Object? expiresAt = _unset,
     Object? resumeExpiresAt = _unset,
+    Object? snoozedRemainingSeconds = _unset,
     SnapStatus? status,
+    SnapSyncStatus? syncStatus,
   }) {
     return SnapItem(
       id: id,
@@ -76,20 +90,30 @@ class SnapItem {
       note: note ?? this.note,
       type: type ?? this.type,
       imagePath: imagePath ?? this.imagePath,
+      imageDownloadUrl: imageDownloadUrl ?? this.imageDownloadUrl,
+      storagePath: storagePath ?? this.storagePath,
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt == _unset ? this.expiresAt : expiresAt as DateTime?,
       resumeExpiresAt: resumeExpiresAt == _unset
           ? this.resumeExpiresAt
           : resumeExpiresAt as DateTime?,
+      snoozedRemainingSeconds: snoozedRemainingSeconds == _unset
+          ? this.snoozedRemainingSeconds
+          : snoozedRemainingSeconds as int?,
       status: status ?? this.status,
+      syncStatus: syncStatus ?? this.syncStatus,
     );
   }
 
   bool get isTimed => expiresAt != null;
-  bool get isKept => status == SnapStatus.kept || expiresAt == null;
-  bool get isSnoozed => resumeExpiresAt != null;
+  bool get isKept => status == SnapStatus.kept;
+  bool get isSnoozed => snoozedRemainingSeconds != null;
 
-  Duration? remaining(DateTime now) => expiresAt?.difference(now);
+  Duration? remaining(DateTime now) {
+    final frozen = snoozedRemainingSeconds;
+    if (frozen != null) return Duration(seconds: frozen);
+    return expiresAt?.difference(now);
+  }
 
   bool expiresSoon(DateTime now) {
     final left = remaining(now);
@@ -106,8 +130,14 @@ class SnapItem {
       final seconds = left.inSeconds.clamp(1, 599);
       return '${seconds ~/ 60} min ${seconds % 60}s';
     }
-    if (left.inMinutes < 60) return '${left.inMinutes.clamp(1, 59)} min';
-    if (left.inHours < 24) return '${left.inHours}hr';
+    final displayMinutes = (left.inSeconds / 60).ceil();
+    if (displayMinutes < 60) return '$displayMinutes min';
+    if (displayMinutes < 24 * 60) {
+      final hours = displayMinutes ~/ 60;
+      final remainder = displayMinutes % 60;
+      if (remainder == 0) return hours == 1 ? '1 hr' : '$hours hr';
+      return '$hours hr $remainder min';
+    }
     return 'Tomorrow';
   }
 
@@ -120,6 +150,15 @@ class SnapItem {
   }
 
   double? progress(DateTime now) {
+    if (isSnoozed) {
+      final originalExpiresAt = resumeExpiresAt;
+      final frozen = snoozedRemainingSeconds;
+      if (originalExpiresAt == null || frozen == null) return null;
+      final total = originalExpiresAt.difference(createdAt).inSeconds;
+      if (total <= 0) return 1;
+      final elapsed = total - frozen;
+      return (elapsed / total).clamp(0, 1);
+    }
     if (expiresAt == null) return null;
     final total = expiresAt!.difference(createdAt).inSeconds;
     if (total <= 0) return 1;

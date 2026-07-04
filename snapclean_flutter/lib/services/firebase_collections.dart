@@ -1,6 +1,7 @@
 class FirebaseCollections {
   static const users = 'users';
   static const usernames = 'usernames';
+  static const emailLookups = 'emailLookups';
   static const screenshots = 'screenshots';
   static const folders = 'folders';
   static const settings = 'settings';
@@ -13,6 +14,9 @@ class FirebaseCollections {
 class FirestorePaths {
   static String username(String username) =>
       '${FirebaseCollections.usernames}/$username';
+
+  static String emailLookup(String email) =>
+      '${FirebaseCollections.emailLookups}/$email';
 
   static String user(String uid) => '${FirebaseCollections.users}/$uid';
 

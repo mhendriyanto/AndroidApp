@@ -37,10 +37,7 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: controller.toggleUrgentAlerts,
                 onInfoTap: () => _open(context, const UrgentAlertsScreen())),
           ]),
-          SectionHeader(
-              title: 'Defaults',
-              action: 'Edit',
-              onAction: () => _open(context, const DefaultTimerScreen())),
+          const SettingsGroupLabel('Defaults'),
           SettingsGroup(children: [
             SettingsLinkRow(
                 icon: controller.defaultTimer.icon,
@@ -49,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _open(context, const DefaultTimerScreen())),
             SettingsLinkRow(
                 icon: Icons.folder_copy_rounded,
-                label: 'Default save location',
+                label: 'Default import location',
                 value: controller.defaultSaveLocation.label,
                 onTap: () => _open(context, const SaveLocationScreen())),
             SettingsLinkRow(
@@ -79,17 +76,17 @@ class SettingsScreen extends StatelessWidget {
             StaticSettingsRow(
                 icon: Icons.photo_size_select_actual_rounded,
                 title: 'Photo access',
-                subtitle: 'Limited picker access for this prototype',
+                subtitle: 'Picker access for selected screenshots',
                 onTap: () => _open(context, const PhotoAccessScreen())),
             StaticSettingsRow(
                 icon: Icons.notifications_active_rounded,
                 title: 'Notifications',
-                subtitle: 'Preview alerts are shown inside the app',
+                subtitle: 'Manage cleanup and reminder alerts',
                 onTap: () => _open(context, const NotificationAccessScreen())),
             StaticSettingsRow(
                 icon: Icons.lock_outline_rounded,
                 title: 'Local storage',
-                subtitle: 'Demo data stays on this device',
+                subtitle: 'Local copies stay on this device',
                 onTap: () => _open(context, const LocalStorageScreen())),
           ]),
           const SettingsGroupLabel('Storage'),
@@ -97,7 +94,7 @@ class SettingsScreen extends StatelessWidget {
             StaticSettingsRow(
                 icon: Icons.storage_rounded,
                 title: 'Cache cleanup',
-                subtitle: 'Remove local preview copies',
+                subtitle: 'Remove temporary local copies',
                 onTap: () => _open(context, const CacheCleanupScreen())),
             StaticSettingsRow(
                 icon: Icons.restore_from_trash_rounded,
@@ -111,7 +108,7 @@ class SettingsScreen extends StatelessWidget {
             StaticSettingsRow(
                 icon: Icons.contrast_rounded,
                 title: 'Theme',
-                subtitle: 'System default',
+                subtitle: controller.appBackground.label,
                 onTap: () => _open(context, const ThemeSettingsScreen())),
           ]),
           const SettingsGroupLabel('About'),
@@ -119,18 +116,13 @@ class SettingsScreen extends StatelessWidget {
             StaticSettingsRow(
                 icon: Icons.info_outline_rounded,
                 title: 'About SnapClean',
-                subtitle: 'Version 1.0 preview',
+                subtitle: 'Version 1.0',
                 onTap: () => _open(context, const AboutSnapCleanScreen())),
             StaticSettingsRow(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacy policy',
-                subtitle: 'Prepared for investor demo',
+                subtitle: 'Data and screenshot handling',
                 onTap: () => _open(context, const PrivacyPolicyScreen())),
-            SettingsActionRow(
-                icon: Icons.restart_alt_rounded,
-                title: 'Reset demo data',
-                subtitle: 'Restore sample screenshots and timers',
-                onTap: () => _resetDemoData(context)),
           ]),
         ],
       ),
@@ -139,38 +131,11 @@ class SettingsScreen extends StatelessWidget {
 
   static String _durationLabel(Duration duration) {
     if (duration.inMinutes < 60) return '${duration.inMinutes} min';
-    return duration.inHours == 1 ? '1 hour' : '${duration.inHours} hours';
+    return duration.inHours == 1 ? '1 hr' : '${duration.inHours} hr';
   }
 
   void _open(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-
-  void _resetDemoData(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Reset demo data?'),
-        content: const Text(
-            'This will restore the sample screenshots, timers, and preview state used for demos.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              SnapCleanScope.of(context).resetDemoData();
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Demo data reset')),
-              );
-            },
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -274,7 +239,7 @@ class SaveLocationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = SnapCleanScope.of(context);
     return SettingsDetailPage(
-      title: 'Save Location',
+      title: 'Import Location',
       icon: Icons.folder_copy_rounded,
       summary: 'Choose where new imports should go by default.',
       children: [
@@ -307,15 +272,7 @@ class ImportSourceScreen extends StatelessWidget {
           StaticSettingsRow(
               icon: Icons.photo_library_rounded,
               title: 'Photos picker',
-              subtitle: 'Choose images from the emulator'),
-          StaticSettingsRow(
-              icon: Icons.folder_copy_rounded,
-              title: 'Files',
-              subtitle: 'Prepared for local file import'),
-          StaticSettingsRow(
-              icon: Icons.camera_alt_rounded,
-              title: 'Camera',
-              subtitle: 'Prepared for scan capture later'),
+              subtitle: 'Choose screenshots from your device'),
         ]),
       ],
     );
@@ -344,8 +301,8 @@ class ExpiryRemindersScreen extends StatelessWidget {
         ]),
         const SettingsNoteCard(
             icon: Icons.schedule_send_rounded,
-            title: 'Prototype notification model',
-            subtitle: 'Reminder behavior is represented inside the app.'),
+            title: 'Reminder Behavior',
+            subtitle: 'Reminder settings control upcoming cleanup alerts.'),
       ],
     );
   }
@@ -441,17 +398,17 @@ class LocalStorageScreen extends StatelessWidget {
     return const SettingsDetailPage(
       title: 'Local Storage',
       icon: Icons.lock_outline_rounded,
-      summary: 'Data in this prototype stays on this device.',
+      summary: 'Review how local copies are handled on this device.',
       children: [
         SettingsGroup(children: [
           StaticSettingsRow(
               icon: Icons.phone_android_rounded,
               title: 'On-device data',
-              subtitle: 'Imported images and timers stay local'),
+              subtitle: 'Local copies help screenshots load quickly'),
           StaticSettingsRow(
-              icon: Icons.cloud_off_rounded,
-              title: 'No cloud sync',
-              subtitle: 'No backend is connected'),
+              icon: Icons.cloud_done_rounded,
+              title: 'Account sync',
+              subtitle: 'Saved screenshots can sync with your account'),
         ]),
       ],
     );
@@ -466,12 +423,12 @@ class CacheCleanupScreen extends StatelessWidget {
     return SettingsDetailPage(
       title: 'Cache Cleanup',
       icon: Icons.storage_rounded,
-      summary: 'Review temporary preview storage.',
+      summary: 'Review temporary local storage.',
       children: [
         const SettingsGroup(children: [
           StaticSettingsRow(
               icon: Icons.image_outlined,
-              title: 'Preview files',
+              title: 'Local image copies',
               subtitle: 'Temporary local image copies'),
           StaticSettingsRow(
               icon: Icons.cleaning_services_rounded,
@@ -495,7 +452,8 @@ class RecentlyDeletedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deleted = SnapCleanScope.of(context).deletedSnaps;
+    final controller = SnapCleanScope.of(context);
+    final deleted = controller.deletedSnaps;
     return SettingsDetailPage(
       title: 'Recently Deleted',
       icon: Icons.restore_from_trash_rounded,
@@ -512,9 +470,81 @@ class RecentlyDeletedScreen extends StatelessWidget {
               StaticSettingsRow(
                   icon: Icons.image_outlined,
                   title: item.title,
-                  subtitle: item.note),
+                  subtitle: 'Tap to restore or delete forever',
+                  onTap: () => _openDeletedActions(context, item)),
           ]),
       ],
+    );
+  }
+
+  void _openDeletedActions(BuildContext context, SnapItem item) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EmptyStateCard(
+              icon: Icons.restore_from_trash_rounded,
+              title: item.title,
+              subtitle: 'Restore this screenshot or delete it permanently.',
+            ),
+            PrimaryButton(
+              label: 'Restore To Saved',
+              icon: Icons.restore_rounded,
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _restore(context, item);
+              },
+            ),
+            const SizedBox(height: 12),
+            SecondaryButton(
+              label: 'Delete Forever',
+              icon: Icons.delete_forever_rounded,
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmPermanentDelete(context, item);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _restore(BuildContext context, SnapItem item) {
+    SnapCleanScope.of(context).restoreDeletedSnap(item.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${item.title} restored to Saved.')),
+    );
+  }
+
+  void _confirmPermanentDelete(BuildContext context, SnapItem item) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete forever?'),
+        content: Text(
+            '"${item.title}" will be permanently removed from your account.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              SnapCleanScope.of(context).permanentlyDeleteSnap(item.id);
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${item.title} deleted forever.')),
+              );
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -524,28 +554,78 @@ class ThemeSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SettingsDetailPage(
+    final controller = SnapCleanScope.of(context);
+    return SettingsDetailPage(
       title: 'Theme',
       icon: Icons.contrast_rounded,
-      summary: 'SnapClean currently follows the system style.',
+      summary: 'Change the app background used across SnapClean.',
       children: [
         SettingsGroup(children: [
-          OptionSettingsRow(
-              icon: Icons.phone_android_rounded,
-              title: 'System default',
-              subtitle: 'Recommended for Android publishing',
-              selected: true,
-              onTap: null),
-          StaticSettingsRow(
-              icon: Icons.light_mode_rounded,
-              title: 'Light',
-              subtitle: 'Prepared for production'),
-          StaticSettingsRow(
-              icon: Icons.dark_mode_rounded,
-              title: 'Dark',
-              subtitle: 'Prepared for production'),
+          for (final style in AppBackgroundStyle.values)
+            BackgroundOptionRow(
+              style: style,
+              selected: style == controller.appBackground,
+              onTap: () => controller.setAppBackground(style),
+            ),
         ]),
+        const SettingsNoteCard(
+          icon: Icons.palette_rounded,
+          title: 'Background Applied',
+          subtitle: 'Your selected background appears across app screens.',
+        ),
       ],
+    );
+  }
+}
+
+class BackgroundOptionRow extends StatelessWidget {
+  final AppBackgroundStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+  const BackgroundOptionRow(
+      {required this.style,
+      required this.selected,
+      required this.onTap,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: style.colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: selected ? AppColors.brand : AppColors.line,
+                  width: selected ? 2 : 1),
+            ),
+            child: Icon(style.icon,
+                color: style.isDark ? Colors.white : AppColors.brandDark,
+                size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(style.label, style: AppText.value),
+              const SizedBox(height: 3),
+              Text(style.description, style: AppText.label),
+            ]),
+          ),
+          Icon(selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: selected ? AppColors.mint : const Color(0xFFCBD5E1)),
+        ],
+      ),
     );
   }
 }
@@ -564,15 +644,15 @@ class AboutSnapCleanScreen extends StatelessWidget {
           StaticSettingsRow(
               icon: Icons.verified_rounded,
               title: 'SnapClean',
-              subtitle: 'Version 1.0 preview'),
+              subtitle: 'Version 1.0'),
           StaticSettingsRow(
               icon: Icons.timer_rounded,
               title: 'Core workflow',
               subtitle: 'Import, timer, archive, and cleanup'),
           StaticSettingsRow(
-              icon: Icons.code_rounded,
-              title: 'Frontend prototype',
-              subtitle: 'No backend connected'),
+              icon: Icons.cloud_done_rounded,
+              title: 'Account sync',
+              subtitle: 'Screenshots and folders save to your account'),
         ]),
       ],
     );
@@ -587,13 +667,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return const SettingsDetailPage(
       title: 'Privacy',
       icon: Icons.privacy_tip_outlined,
-      summary: 'A publishing-ready privacy structure for this prototype.',
+      summary: 'How SnapClean handles selected screenshots.',
       children: [
         SettingsNoteCard(
           icon: Icons.lock_outline_rounded,
-          title: 'Local-first prototype',
+          title: 'User-selected images',
           subtitle:
-              'Imported screenshots are not connected to any backend in this build.',
+              'Only screenshots you choose enter SnapClean.',
         ),
         SettingsGroup(children: [
           StaticSettingsRow(
@@ -603,11 +683,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
           StaticSettingsRow(
               icon: Icons.delete_sweep_rounded,
               title: 'Cleanup timers',
-              subtitle: 'Timer metadata is stored locally'),
+              subtitle: 'Timers control when screenshots are cleaned up'),
           StaticSettingsRow(
-              icon: Icons.cloud_off_rounded,
-              title: 'No account upload',
-              subtitle: 'Cloud sync is not implemented'),
+              icon: Icons.cloud_done_rounded,
+              title: 'Account storage',
+              subtitle: 'Saved screenshots can sync with your account'),
         ]),
       ],
     );
@@ -713,7 +793,7 @@ class OptionSettingsRow extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text(title, style: AppText.value),
+                Text(_titleCase(title), style: AppText.value),
                 const SizedBox(height: 3),
                 Text(subtitle, style: AppText.label),
               ])),
@@ -777,12 +857,6 @@ class AccountCard extends StatelessWidget {
                           fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
                   Text(user.email, style: AppText.label),
-                  const SizedBox(height: 10),
-                  const BadgePill(
-                    label: 'Preview account',
-                    icon: Icons.verified_user_rounded,
-                    kind: BadgeKind.normal,
-                  ),
                 ],
               ),
             ),
@@ -899,13 +973,13 @@ class SettingsRow extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text(title, style: AppText.value),
+                Text(_titleCase(title), style: AppText.value),
                 const SizedBox(height: 3),
                 Text(subtitle, style: AppText.label)
               ])),
           GestureDetector(
               onTap: () => onChanged(!value),
-              child: PrototypeSwitch(value: value)),
+              child: SettingsSwitch(value: value)),
         ],
       ),
     );
@@ -935,7 +1009,7 @@ class StaticSettingsRow extends StatelessWidget {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: AppText.value),
+          Text(_titleCase(title), style: AppText.value),
           const SizedBox(height: 3),
           Text(subtitle, style: AppText.label)
         ])),
@@ -966,7 +1040,7 @@ class SettingsLinkRow extends StatelessWidget {
         children: [
           SettingIcon(icon: icon),
           const SizedBox(width: 12),
-          Expanded(child: Text(label, style: AppText.value)),
+          Expanded(child: Text(_titleCase(label), style: AppText.value)),
           Text(value, style: AppText.label),
           const SizedBox(width: 6),
           const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
@@ -999,7 +1073,7 @@ class SettingsActionRow extends StatelessWidget {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: AppText.value),
+          Text(_titleCase(title), style: AppText.value),
           const SizedBox(height: 3),
           Text(subtitle, style: AppText.label)
         ])),
@@ -1051,9 +1125,9 @@ class SettingIcon extends StatelessWidget {
   }
 }
 
-class PrototypeSwitch extends StatelessWidget {
+class SettingsSwitch extends StatelessWidget {
   final bool value;
-  const PrototypeSwitch({required this.value, super.key});
+  const SettingsSwitch({required this.value, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1102,4 +1176,12 @@ class SimpleRow extends StatelessWidget {
       ],
     );
   }
+}
+
+String _titleCase(String value) {
+  return value.split(' ').map((word) {
+    if (word.isEmpty) return word;
+    if (word == word.toUpperCase()) return word;
+    return word[0].toUpperCase() + word.substring(1);
+  }).join(' ');
 }

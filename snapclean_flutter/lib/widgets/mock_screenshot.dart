@@ -7,7 +7,9 @@ import '../models/snap_item.dart';
 class MiniShot extends StatelessWidget {
   final MockType type;
   final String? imagePath;
-  const MiniShot({required this.type, this.imagePath, super.key});
+  final String? imageUrl;
+  const MiniShot(
+      {required this.type, this.imagePath, this.imageUrl, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +21,10 @@ class MiniShot extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFE2E8F0))),
-      child: ImagePreview(imagePath: imagePath, fallback: MiniMock(type: type)),
+      child: ImagePreview(
+          imagePath: imagePath,
+          imageUrl: imageUrl,
+          fallback: MiniMock(type: type)),
     );
   }
 }
@@ -27,7 +32,9 @@ class MiniShot extends StatelessWidget {
 class SmallSquareMock extends StatelessWidget {
   final MockType type;
   final String? imagePath;
-  const SmallSquareMock({required this.type, this.imagePath, super.key});
+  final String? imageUrl;
+  const SmallSquareMock(
+      {required this.type, this.imagePath, this.imageUrl, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,25 +45,44 @@ class SmallSquareMock extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE2E8F0))),
-        child:
-            ImagePreview(imagePath: imagePath, fallback: MiniMock(type: type)));
+        child: ImagePreview(
+            imagePath: imagePath,
+            imageUrl: imageUrl,
+            fallback: MiniMock(type: type)));
   }
 }
 
 class ImagePreview extends StatelessWidget {
   final String? imagePath;
+  final String? imageUrl;
   final Widget fallback;
   const ImagePreview(
-      {required this.imagePath, required this.fallback, super.key});
+      {required this.imagePath,
+      this.imageUrl,
+      required this.fallback,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
     final path = imagePath;
-    if (path == null || path.isEmpty) return fallback;
+    if (path == null || path.isEmpty) return _networkOrFallback();
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Image.file(
         File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _networkOrFallback(),
+      ),
+    );
+  }
+
+  Widget _networkOrFallback() {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        url,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => fallback,
       ),

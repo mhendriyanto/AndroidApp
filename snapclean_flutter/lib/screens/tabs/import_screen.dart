@@ -11,16 +11,20 @@ import '../snap_detail_screen.dart';
 
 class ImportScreen extends StatelessWidget {
   final VoidCallback onViewActive;
+  final VoidCallback onViewSaved;
   final VoidCallback onClose;
   const ImportScreen(
-      {required this.onViewActive, required this.onClose, super.key});
+      {required this.onViewActive,
+      required this.onViewSaved,
+      required this.onClose,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
     final controller = SnapCleanScope.of(context);
     final draft = controller.importDraft;
     return AppPage(
-      eyebrow: 'Local-only workflow',
+      eyebrow: 'Photos',
       title: 'Import',
       leading: RoundIcon(icon: Icons.chevron_left_rounded, onTap: onClose),
       child: Column(
@@ -35,7 +39,7 @@ class ImportScreen extends StatelessWidget {
           if (draft.isEmpty)
             const AppCard(
                 child: Text(
-                    'Tap Add screenshot to choose images from this emulator.',
+                    'Tap Add screenshot to choose images from your device.',
                     style: TextStyle(
                         fontWeight: FontWeight.w800, color: AppColors.muted)))
           else
@@ -51,8 +55,40 @@ class ImportScreen extends StatelessWidget {
               ],
             ),
           SectionHeader(
-              title: 'Choose timer',
-              action: controller.selectedImportTimer.label),
+              title: 'Save',
+              action:
+                  controller.selectedImportTimer.id == TimerPreset.forever.name
+                      ? 'Selected'
+                      : ''),
+          ForeverOptionCard(
+            active:
+                controller.selectedImportTimer.id == TimerPreset.forever.name,
+            onTap: () => controller.selectImportTimer(
+                ImportTimerOption.fromPreset(TimerPreset.forever)),
+          ),
+          SectionHeader(
+              title: 'Custom Timer',
+              action: controller.selectedImportTimer.id.startsWith('one-time-')
+                  ? 'Selected'
+                  : ''),
+          CustomTimerOptionCard(
+            active: controller.selectedImportTimer.id.startsWith('one-time-'),
+            timer: controller.selectedImportTimer.id.startsWith('one-time-')
+                ? controller.selectedImportTimer
+                : null,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OneTimeTimerScreen()),
+            ),
+          ),
+          SectionHeader(
+            title: 'Choose Default Timer',
+            action: 'Add Timer',
+            onAction: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddTimerScreen()),
+            ),
+          ),
           GridView.count(
             padding: EdgeInsets.zero,
             crossAxisCount: 2,
@@ -76,29 +112,7 @@ class ImportScreen extends StatelessWidget {
                           )
                       : () => controller.selectImportTimer(timer),
                 ),
-              TimerTile(
-                icon: Icons.add_rounded,
-                title: 'Custom',
-                subtitle: 'Add timer',
-                active: false,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddTimerScreen()),
-                ),
-              ),
             ],
-          ),
-          SectionHeader(
-              title: 'Save forever',
-              action:
-                  controller.selectedImportTimer.id == TimerPreset.forever.name
-                      ? 'Selected'
-                      : ''),
-          ForeverOptionCard(
-            active:
-                controller.selectedImportTimer.id == TimerPreset.forever.name,
-            onTap: () => controller.selectImportTimer(
-                ImportTimerOption.fromPreset(TimerPreset.forever)),
           ),
           const SizedBox(height: 20),
           if (draft.isNotEmpty)
@@ -108,7 +122,7 @@ class ImportScreen extends StatelessWidget {
             ),
           PrimaryButton(
             label: controller.selectedImportTimer.id == TimerPreset.forever.name
-                ? 'Save forever'
+                ? 'Save'
                 : 'Save timer',
             icon: controller.selectedImportTimer.id == TimerPreset.forever.name
                 ? Icons.bookmark_rounded
@@ -116,12 +130,17 @@ class ImportScreen extends StatelessWidget {
             onTap: draft.isEmpty
                 ? () => _openImageImport(context)
                 : () {
+                    final saveToArchive = controller.selectedImportTimer.id ==
+                        TimerPreset.forever.name;
                     final saved = controller.saveImport();
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => TimerSetScreen(
-                                saved: saved, onViewActive: onViewActive)));
+                            builder: (_) => saveToArchive
+                                ? SaveScreenshotScreen(
+                                    saved: saved, onViewSaved: onViewSaved)
+                                : TimerSetScreen(
+                                    saved: saved, onViewActive: onViewActive)));
                   },
           ),
         ],
@@ -172,10 +191,71 @@ class ForeverOptionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Forever', style: AppText.value),
+                  Text('Archive', style: AppText.value),
                   SizedBox(height: 3),
                   Text('Save to the Saved tab with no countdown.',
                       style: AppText.label),
+                ],
+              ),
+            ),
+            Icon(
+              active ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
+              color: active ? AppColors.mint : const Color(0xFFCBD5E1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CustomTimerOptionCard extends StatelessWidget {
+  final bool active;
+  final ImportTimerOption? timer;
+  final VoidCallback onTap;
+  const CustomTimerOptionCard(
+      {required this.active,
+      required this.timer,
+      required this.onTap,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AppCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: active
+                    ? const LinearGradient(
+                        colors: [AppColors.brand, AppColors.brandDark],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight)
+                    : null,
+                color: active ? null : const Color(0xFFECFEFF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(Icons.timer_rounded,
+                  color: active ? Colors.white : AppColors.brand, size: 23),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Custom Timer', style: AppText.value),
+                  const SizedBox(height: 3),
+                  Text(
+                    active && timer != null
+                        ? '${timer!.label} for this import only.'
+                        : 'Choose a one-time timer for selected screenshots.',
+                    style: AppText.label,
+                  ),
                 ],
               ),
             ),
@@ -332,31 +412,152 @@ class AddTimerScreen extends StatefulWidget {
   State<AddTimerScreen> createState() => _AddTimerScreenState();
 }
 
+class OneTimeTimerScreen extends StatefulWidget {
+  const OneTimeTimerScreen({super.key});
+
+  @override
+  State<OneTimeTimerScreen> createState() => _OneTimeTimerScreenState();
+}
+
+class _OneTimeTimerScreenState extends State<OneTimeTimerScreen> {
+  TextEditingController? hours;
+  TextEditingController? minutes;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (minutes != null) return;
+    final selected = SnapCleanScope.of(context).selectedImportTimer;
+    final totalMinutes = selected.id.startsWith('one-time-')
+        ? selected.duration?.inMinutes ?? 45
+        : 45;
+    hours = TextEditingController(text: '${totalMinutes ~/ 60}');
+    minutes = TextEditingController(text: '${totalMinutes % 60}');
+  }
+
+  @override
+  void dispose() {
+    hours?.dispose();
+    minutes?.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final totalMinutes = _totalMinutes();
+    if (totalMinutes == null || totalMinutes <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Enter a valid timer. Minutes must be 0 to 59.')),
+      );
+      return;
+    }
+    SnapCleanScope.of(context).selectImportTimer(ImportTimerOption(
+      id: 'one-time-${DateTime.now().microsecondsSinceEpoch}',
+      label: _timerLabel(totalMinutes),
+      subtitle: 'This import only',
+      icon: Icons.timer_rounded,
+      duration: Duration(minutes: totalMinutes),
+    ));
+    Navigator.pop(context);
+  }
+
+  int? _totalMinutes() {
+    final hourAmount = int.tryParse(hours!.text.trim().isEmpty
+        ? '0'
+        : hours!.text.trim());
+    final minuteAmount = int.tryParse(minutes!.text.trim().isEmpty
+        ? '0'
+        : minutes!.text.trim());
+    if (hourAmount == null || minuteAmount == null) return null;
+    if (hourAmount < 0 || minuteAmount < 0 || minuteAmount >= 60) return null;
+    return hourAmount * 60 + minuteAmount;
+  }
+
+  String _timerLabel(int amount) {
+    if (amount < 60) return '$amount min';
+    final hours = amount ~/ 60;
+    final remainder = amount % 60;
+    if (remainder == 0) return hours == 1 ? '1 hr' : '$hours hr';
+    return '$hours hr $remainder min';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        eyebrow: 'Import timer',
+        title: 'Custom Timer',
+        leading: RoundIcon(
+            icon: Icons.chevron_left_rounded,
+            onTap: () => Navigator.pop(context)),
+        child: Column(
+          children: [
+            AppCard(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppField(
+                            label: 'Hours',
+                            value: '',
+                            controller: hours,
+                            keyboardType: TextInputType.number),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppField(
+                            label: 'Minutes',
+                            value: '',
+                            controller: minutes,
+                            keyboardType: TextInputType.number),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            PrimaryButton(
+                label: 'Use Custom Timer',
+                icon: Icons.check_rounded,
+                onTap: _save),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AddTimerScreenState extends State<AddTimerScreen> {
   late final TextEditingController name;
+  late final TextEditingController hours;
   late final TextEditingController minutes;
 
   @override
   void initState() {
     super.initState();
     final timer = widget.timer;
-    name = TextEditingController(text: timer?.label ?? 'Custom timer');
-    minutes =
-        TextEditingController(text: '${timer?.duration?.inMinutes ?? 90}');
+    final totalMinutes = timer?.duration?.inMinutes ?? 90;
+    name = TextEditingController(
+        text: timer?.isCustom == true ? timer?.label ?? '' : '');
+    hours = TextEditingController(text: '${totalMinutes ~/ 60}');
+    minutes = TextEditingController(text: '${totalMinutes % 60}');
   }
 
   @override
   void dispose() {
     name.dispose();
+    hours.dispose();
     minutes.dispose();
     super.dispose();
   }
 
   void _save() {
-    final amount = int.tryParse(minutes.text.trim());
+    final amount = _totalMinutes();
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a timer longer than 0 minutes.')),
+        const SnackBar(
+            content: Text('Enter a valid timer. Minutes must be 0 to 59.')),
       );
       return;
     }
@@ -371,12 +572,22 @@ class _AddTimerScreenState extends State<AddTimerScreen> {
     Navigator.pop(context);
   }
 
+  int? _totalMinutes() {
+    final hourAmount =
+        int.tryParse(hours.text.trim().isEmpty ? '0' : hours.text.trim());
+    final minuteAmount = int.tryParse(
+        minutes.text.trim().isEmpty ? '0' : minutes.text.trim());
+    if (hourAmount == null || minuteAmount == null) return null;
+    if (hourAmount < 0 || minuteAmount < 0 || minuteAmount >= 60) return null;
+    return hourAmount * 60 + minuteAmount;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppPage(
         eyebrow: 'Import timer',
-        title: widget.timer == null ? 'New timer' : 'Edit timer',
+        title: widget.timer == null ? 'New Timer' : 'Edit Timer',
         leading: RoundIcon(
             icon: Icons.chevron_left_rounded,
             onTap: () => Navigator.pop(context)),
@@ -387,7 +598,25 @@ class _AddTimerScreenState extends State<AddTimerScreen> {
                 children: [
                   AppField(label: 'Name', value: '', controller: name),
                   const SizedBox(height: 12),
-                  AppField(label: 'Minutes', value: '', controller: minutes),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppField(
+                            label: 'Hours',
+                            value: '',
+                            controller: hours,
+                            keyboardType: TextInputType.number),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppField(
+                            label: 'Minutes',
+                            value: '',
+                            controller: minutes,
+                            keyboardType: TextInputType.number),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -431,17 +660,16 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
-                'The emulator picker is unavailable in this build. Use sample screenshots for now.')),
+                'Photo picker is unavailable right now. Check photo access and try again.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = SnapCleanScope.of(context);
     return Scaffold(
       body: AppPage(
-        eyebrow: 'Emulator photos',
+        eyebrow: 'Photos',
         title: 'Add images',
         scrollable: !picking,
         leading: RoundIcon(
@@ -452,7 +680,7 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
           child: LoadingOverlay(
             visible: picking,
             title: 'Opening image picker',
-            subtitle: 'Choose screenshots from this emulator.',
+            subtitle: 'Choose screenshots from your device.',
             child: Column(
               children: [
                 const EmptyStateCard(
@@ -462,18 +690,9 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
                       'SnapClean only imports the images you select. It does not scan your gallery.',
                 ),
                 PrimaryButton(
-                  label: picking ? 'Opening picker' : 'Choose from emulator',
+                  label: picking ? 'Opening picker' : 'Choose from Photos',
                   icon: Icons.add_photo_alternate_rounded,
                   onTap: picking ? () {} : _pickImages,
-                ),
-                const SizedBox(height: 12),
-                SecondaryButton(
-                  label: 'Use sample screenshots',
-                  icon: Icons.auto_awesome_rounded,
-                  onTap: () {
-                    controller.useSampleImport();
-                    Navigator.pop(context);
-                  },
                 ),
               ],
             ),
@@ -495,7 +714,7 @@ class TimerSetScreen extends StatefulWidget {
 }
 
 class _TimerSetScreenState extends State<TimerSetScreen> {
-  late final TextEditingController name;
+  late final List<TextEditingController> names;
   late List<SnapItem> saved;
   bool naming = true;
 
@@ -503,34 +722,38 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
   void initState() {
     super.initState();
     saved = widget.saved;
-    name = TextEditingController(text: saved.first.title);
+    names = [for (final _ in saved) TextEditingController()];
   }
 
   @override
   void dispose() {
-    name.dispose();
+    for (final controller in names) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  void _saveName() {
-    final trimmed = name.text.trim();
-    if (trimmed.isEmpty) {
-      setState(() => naming = false);
-      return;
+  void _saveNames() {
+    final controller = SnapCleanScope.of(context);
+    final renamed = <SnapItem>[];
+    for (int index = 0; index < saved.length; index++) {
+      final item = saved[index];
+      final trimmed = names[index].text.trim();
+      if (trimmed.isEmpty || trimmed == item.title) {
+        renamed.add(item);
+        continue;
+      }
+      controller.renameSnap(item.id, trimmed);
+      renamed.add(item.copyWith(title: trimmed));
     }
-    SnapCleanScope.of(context).renameSnap(saved.first.id, trimmed);
     setState(() {
-      saved = [
-        saved.first.copyWith(title: trimmed),
-        ...saved.skip(1),
-      ];
+      saved = renamed;
       naming = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final first = saved.first;
     return Scaffold(
       body: AppPage(
         eyebrow: 'Saved',
@@ -540,27 +763,29 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
             onTap: () => Navigator.pop(context)),
         child: Column(
           children: [
-            HeroClean(
-              badge: first.badge(DateTime.now()),
-              title: first.isKept ? 'Saved forever.' : 'Deletes automatically.',
-              subtitle: first.isKept
-                  ? 'This screenshot has no timer.'
-                  : 'SnapClean will remove it when the timer expires.',
-              badgeIcon: first.isKept
-                  ? Icons.all_inclusive_rounded
-                  : Icons.check_rounded,
-            ),
             if (naming) ...[
-              const SectionHeader(title: 'Name screenshot', action: ''),
+              SectionHeader(
+                  title: saved.length == 1
+                      ? 'Name Screenshot'
+                      : 'Name Screenshots',
+                  action: ''),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Would you like to name this screenshot?',
+                    Text(
+                        saved.length == 1
+                            ? 'Would you like to name this screenshot?'
+                            : 'Give each screenshot its own name.',
                         style: AppText.value),
                     const SizedBox(height: 10),
-                    AppField(
-                        label: 'Screenshot name', value: '', controller: name),
+                    for (int index = 0; index < saved.length; index++) ...[
+                      AppField(
+                          label: 'Screenshot ${index + 1}',
+                          value: '',
+                          controller: names[index]),
+                      if (index != saved.length - 1) const SizedBox(height: 12),
+                    ],
                     const SizedBox(height: 14),
                     Row(
                       children: [
@@ -574,9 +799,10 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: PrimaryButton(
-                            label: 'Save name',
+                            label:
+                                saved.length == 1 ? 'Save Name' : 'Save Names',
                             icon: Icons.check_rounded,
-                            onTap: _saveName,
+                            onTap: _saveNames,
                           ),
                         ),
                       ],
@@ -617,6 +843,412 @@ class _TimerSetScreenState extends State<TimerSetScreen> {
   }
 }
 
+class SaveScreenshotScreen extends StatefulWidget {
+  final List<SnapItem> saved;
+  final VoidCallback onViewSaved;
+  const SaveScreenshotScreen(
+      {required this.saved, required this.onViewSaved, super.key});
+
+  @override
+  State<SaveScreenshotScreen> createState() => _SaveScreenshotScreenState();
+}
+
+class _SaveScreenshotScreenState extends State<SaveScreenshotScreen> {
+  late final List<TextEditingController> names;
+  late final TextEditingController folderName;
+  late List<SnapItem> saved;
+  String? selectedFolderId;
+  bool naming = true;
+
+  @override
+  void initState() {
+    super.initState();
+    saved = widget.saved;
+    names = [for (final _ in saved) TextEditingController()];
+    folderName = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    for (final controller in names) {
+      controller.dispose();
+    }
+    folderName.dispose();
+    super.dispose();
+  }
+
+  void _saveNames() {
+    final controller = SnapCleanScope.of(context);
+    final renamed = <SnapItem>[];
+    for (int index = 0; index < saved.length; index++) {
+      final item = saved[index];
+      final trimmed = names[index].text.trim();
+      if (trimmed.isEmpty || trimmed == item.title) {
+        renamed.add(item);
+        continue;
+      }
+      controller.renameSnap(item.id, trimmed);
+      renamed.add(item.copyWith(title: trimmed));
+    }
+    setState(() {
+      saved = renamed;
+      naming = false;
+    });
+  }
+
+  void _assignToFolder(SavedFolder? folder) {
+    final controller = SnapCleanScope.of(context);
+    final previousFolderId = selectedFolderId;
+    if (previousFolderId != null && previousFolderId != folder?.id) {
+      for (final item in saved) {
+        controller.removeSnapFromFolder(
+            folderId: previousFolderId, snapId: item.id);
+      }
+    }
+    if (folder == null) {
+      setState(() => selectedFolderId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved in Archive.')),
+      );
+      return;
+    }
+    for (final item in saved) {
+      controller.addSnapToFolder(folderId: folder.id, snapId: item.id);
+    }
+    setState(() => selectedFolderId = folder.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Saved to ${folder.name}.')),
+    );
+  }
+
+  void _createFolder(BuildContext sheetContext) {
+    final controller = SnapCleanScope.of(context);
+    final folder = controller.createSavedFolder(folderName.text);
+    folderName.clear();
+    Navigator.pop(sheetContext);
+    _assignToFolder(folder);
+  }
+
+  void _showCreateFolderSheet() {
+    folderName.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 18,
+          right: 18,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 18,
+        ),
+        child: AppCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text('Create Folder', style: AppText.title),
+              const SizedBox(height: 14),
+              AppField(label: 'Folder Name', value: '', controller: folderName),
+              const SizedBox(height: 16),
+              PrimaryButton(
+                label: 'Create Folder',
+                icon: Icons.create_new_folder_rounded,
+                onTap: () => _createFolder(sheetContext),
+              ),
+              const SizedBox(height: 10),
+              SecondaryButton(
+                label: 'Cancel',
+                icon: Icons.close_rounded,
+                onTap: () => Navigator.pop(sheetContext),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = SnapCleanScope.of(context);
+    final folders = controller.savedFolders;
+    final selectedFolder = _selectedFolder(folders);
+
+    return Scaffold(
+      body: AppPage(
+        eyebrow: 'Saved',
+        title: 'Save Screenshot',
+        leading: RoundIcon(
+            icon: Icons.chevron_left_rounded,
+            onTap: () => Navigator.pop(context)),
+        child: Column(
+          children: [
+            if (naming) ...[
+              SectionHeader(
+                  title: saved.length == 1
+                      ? 'Name Screenshot'
+                      : 'Name Screenshots',
+                  action: ''),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        saved.length == 1
+                            ? 'Would you like to name this screenshot?'
+                            : 'Give each screenshot its own name.',
+                        style: AppText.value),
+                    const SizedBox(height: 10),
+                    for (int index = 0; index < saved.length; index++) ...[
+                      AppField(
+                          label: 'Screenshot ${index + 1}',
+                          value: '',
+                          controller: names[index]),
+                      if (index != saved.length - 1) const SizedBox(height: 12),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Cancel',
+                            icon: Icons.close_rounded,
+                            onTap: () => setState(() => naming = false),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: PrimaryButton(
+                            label:
+                                saved.length == 1 ? 'Save Name' : 'Save Names',
+                            icon: Icons.check_rounded,
+                            onTap: _saveNames,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            SectionHeader(
+              title: 'Send To Folder',
+              action: '',
+            ),
+            if (folders.isEmpty)
+              EmptyStateCard(
+                icon: Icons.folder_rounded,
+                title: 'No folders yet',
+                subtitle:
+                    'Keep these in Archive, or create a folder for this saved set.',
+                actionLabel: 'Create Folder',
+                actionIcon: Icons.create_new_folder_rounded,
+                onAction: _showCreateFolderSheet,
+              )
+            else
+              FolderDropdownCard(
+                folders: folders,
+                selectedFolder: selectedFolder,
+                onArchive: () => _assignToFolder(null),
+                onFolder: _assignToFolder,
+                onCreateFolder: _showCreateFolderSheet,
+              ),
+            SectionHeader(
+                title: 'Saved Screenshots', action: '${saved.length} shots'),
+            for (final item in saved)
+              SnapItemCard(
+                item: item,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => SnapDetailScreen(item: item)),
+                ),
+              ),
+            const SizedBox(height: 8),
+            PrimaryButton(
+              label: 'View Saved',
+              icon: Icons.bookmark_rounded,
+              onTap: () {
+                Navigator.pop(context);
+                widget.onViewSaved();
+              },
+            ),
+            const SizedBox(height: 12),
+            SecondaryButton(
+                label: 'Import Another',
+                icon: Icons.add_rounded,
+                onTap: () => Navigator.pop(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  SavedFolder? _selectedFolder(List<SavedFolder> folders) {
+    for (final folder in folders) {
+      if (folder.id == selectedFolderId) return folder;
+    }
+    return null;
+  }
+}
+
+class FolderDropdownCard extends StatelessWidget {
+  final List<SavedFolder> folders;
+  final SavedFolder? selectedFolder;
+  final VoidCallback onArchive;
+  final ValueChanged<SavedFolder> onFolder;
+  final VoidCallback onCreateFolder;
+  const FolderDropdownCard(
+      {required this.folders,
+      required this.selectedFolder,
+      required this.onArchive,
+      required this.onFolder,
+      required this.onCreateFolder,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final folder = selectedFolder;
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: PopupMenuButton<String>(
+        tooltip: 'Choose folder',
+        color: Colors.white,
+        position: PopupMenuPosition.under,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        onSelected: (value) {
+          if (value == 'archive') {
+            onArchive();
+            return;
+          }
+          if (value == 'create') {
+            onCreateFolder();
+            return;
+          }
+          for (final folder in folders) {
+            if (folder.id == value) {
+              onFolder(folder);
+              return;
+            }
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'archive',
+            child: FolderMenuRow(
+              icon: Icons.bookmark_rounded,
+              title: 'Archive',
+              subtitle: 'Saved with no folder',
+              selected: folder == null,
+            ),
+          ),
+          for (final item in folders)
+            PopupMenuItem(
+              value: item.id,
+              child: FolderMenuRow(
+                icon: Icons.folder_rounded,
+                title: item.name,
+                subtitle: '${item.snapIds.length} saved',
+                selected: item.id == folder?.id,
+              ),
+            ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'create',
+            child: FolderMenuRow(
+              icon: Icons.create_new_folder_rounded,
+              title: 'Create Folder',
+              subtitle: 'Add another folder',
+              selected: false,
+            ),
+          ),
+        ],
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFEFF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                  folder == null
+                      ? Icons.bookmark_rounded
+                      : Icons.folder_rounded,
+                  color: AppColors.brand),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(folder?.name ?? 'Archive', style: AppText.value),
+                  const SizedBox(height: 3),
+                  Text(
+                    folder == null
+                        ? 'Tap to choose a folder.'
+                        : 'Tap to change folder.',
+                    style: AppText.label,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                color: AppColors.brand),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FolderMenuRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  const FolderMenuRow(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.selected,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.brand, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(subtitle, style: AppText.label),
+            ],
+          ),
+        ),
+        if (selected)
+          const Icon(Icons.check_circle_rounded,
+              color: AppColors.mint, size: 18),
+      ],
+    );
+  }
+}
+
 class GoogleAddBox extends StatelessWidget {
   const GoogleAddBox({super.key});
 
@@ -650,7 +1282,7 @@ class GoogleAddBox extends StatelessWidget {
           const Text('Add screenshot',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
-          const Text('Choose from emulator or samples',
+          const Text('Choose from Photos',
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,

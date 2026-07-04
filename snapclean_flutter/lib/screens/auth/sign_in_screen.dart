@@ -115,6 +115,7 @@ class _SignInScreenState extends State<SignInScreen> {
         uid: credential.user?.uid,
       );
       if (!mounted) return;
+      final controller = SnapCleanScope.of(context);
       if (profile == null) {
         final fallbackUsername = credential.user?.displayName ?? resolvedEmail;
         await _backfillUsernameLookup(
@@ -122,7 +123,7 @@ class _SignInScreenState extends State<SignInScreen> {
           email: resolvedEmail,
           uid: credential.user?.uid,
         );
-        SnapCleanScope.of(context).createAccount(
+        controller.createAccount(
           username: fallbackUsername,
           email: resolvedEmail,
         );
@@ -132,7 +133,26 @@ class _SignInScreenState extends State<SignInScreen> {
           email: profile.email,
           uid: credential.user?.uid,
         );
-        SnapCleanScope.of(context).updateProfile(profile);
+        controller.updateProfile(profile);
+      }
+      try {
+        final cloudSnaps =
+            await firestoreRepository.fetchSnaps(uid: credential.user?.uid);
+        final cloudFolders =
+            await firestoreRepository.fetchFolders(uid: credential.user?.uid);
+        final cloudSettings = await firestoreRepository.fetchAppSettings(
+            uid: credential.user?.uid);
+        final cloudTimers = await firestoreRepository.fetchTimerPresets(
+            uid: credential.user?.uid);
+        if (!mounted) return;
+        controller.loadCloudSnaps(cloudSnaps);
+        controller.loadCloudFolders(cloudFolders);
+        controller.loadCloudSettings(cloudSettings);
+        controller.loadCloudTimers(cloudTimers);
+      } catch (_) {
+        if (!mounted) return;
+        controller.loadCloudSnaps(const []);
+        controller.loadCloudFolders(const []);
       }
       Navigator.pushReplacement(
         context,

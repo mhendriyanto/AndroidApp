@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/snap_item.dart';
+import '../services/firestore_repository.dart';
+import '../services/storage_repository.dart';
 
 enum CleanupBehavior {
   autoDelete('Auto-delete', 'Delete expired screenshots automatically'),
@@ -26,6 +28,29 @@ enum DefaultSaveLocation {
   const DefaultSaveLocation(this.label, this.description);
 }
 
+enum AppBackgroundStyle {
+  cloud('Cloud', 'Bright white and pale blue', Icons.cloud_rounded,
+      [Color(0xFFF8FAFC), Color(0xFFEFF6FF)]),
+  frost('Frost', 'Cool blue and soft cyan', Icons.ac_unit_rounded,
+      [Color(0xFFEFF6FF), Color(0xFFECFEFF)]),
+  mint('Mint', 'Fresh green and clean white', Icons.spa_rounded,
+      [Color(0xFFF0FDF4), Color(0xFFFFFFFF)]),
+  lavender('Lavender', 'Soft violet and white', Icons.auto_awesome_rounded,
+      [Color(0xFFF5F3FF), Color(0xFFFFFFFF)]),
+  slate('Slate', 'Focused dark surface', Icons.dark_mode_rounded,
+      [Color(0xFF0F172A), Color(0xFF1E293B)]);
+
+  final String label;
+  final String description;
+  final IconData icon;
+  final List<Color> colors;
+
+  const AppBackgroundStyle(
+      this.label, this.description, this.icon, this.colors);
+
+  bool get isDark => this == AppBackgroundStyle.slate;
+}
+
 class AppController extends ChangeNotifier {
   AppController.seeded()
       : user = const UserProfile(
@@ -36,49 +61,13 @@ class AppController extends ChangeNotifier {
     _startExpiryWatcher();
   }
 
-  List<SnapItem> _sampleSnaps(DateTime now) {
-    return [
-      SnapItem(
-          id: 'order',
-          title: 'Order confirmation',
-          note: 'Delete unless still needed.',
-          type: MockType.receipt,
-          createdAt: now.subtract(const Duration(minutes: 22)),
-          expiresAt: now.add(const Duration(minutes: 8)),
-          status: SnapStatus.active),
-      SnapItem(
-          id: 'chat',
-          title: 'Message thread',
-          note: 'Temporary reply note.',
-          type: MockType.chat,
-          createdAt: now.subtract(const Duration(minutes: 17)),
-          expiresAt: now.add(const Duration(minutes: 43)),
-          status: SnapStatus.active),
-      SnapItem(
-          id: 'chart',
-          title: 'Analytics chart',
-          note: 'Review later.',
-          type: MockType.chart,
-          createdAt: now.subtract(const Duration(hours: 2)),
-          expiresAt: now.add(const Duration(hours: 8)),
-          status: SnapStatus.active),
-      SnapItem(
-          id: 'travel',
-          title: 'Travel QR code',
-          note: 'Saved for trip.',
-          type: MockType.travel,
-          createdAt: now.subtract(const Duration(days: 1)),
-          expiresAt: null,
-          status: SnapStatus.kept),
-    ];
-  }
-
   UserProfile user;
   bool autoDeleteExpired = true;
   bool urgentAlerts = true;
   bool expiryReminders = true;
   CleanupBehavior cleanupBehavior = CleanupBehavior.autoDelete;
   DefaultSaveLocation defaultSaveLocation = DefaultSaveLocation.timers;
+  AppBackgroundStyle appBackground = AppBackgroundStyle.cloud;
   Duration notificationLeadTime = const Duration(minutes: 30);
   TimerPreset defaultTimer = TimerPreset.oneHour;
   ImportTimerOption selectedImportTimer =
@@ -91,6 +80,8 @@ class AppController extends ChangeNotifier {
   List<SnapItem> lastSaved = const [];
   AppNotice? latestNotice;
   Timer? _expiryWatcher;
+  final FirestoreRepository _firestoreRepository = FirestoreRepository();
+  final StorageRepository _storageRepository = StorageRepository();
   int _noticeId = 0;
 
   List<ImportTimerOption> get importTimerOptions => [
@@ -117,6 +108,45 @@ class AppController extends ChangeNotifier {
   int get keptCount => keptSnaps.length + 5;
   String get spaceSaved => '${430 + cleanedCount * 8}MB';
 
+  void loadCloudSnaps(List<SnapItem> cloudSnaps) {
+    _snaps = cloudSnaps;
+    importDraft = const [];
+    lastSaved = const [];
+    notifyListeners();
+  }
+
+  void loadCloudFolders(List<SavedFolder> cloudFolders) {
+    savedFolders = cloudFolders;
+    notifyListeners();
+  }
+
+  void loadCloudTimers(List<ImportTimerOption> timers) {
+    customImportTimers = timers;
+    notifyListeners();
+  }
+
+  void loadCloudSettings(Map<String, dynamic> settings) {
+    final cleanup = _enumByName(
+        CleanupBehavior.values, settings['cleanupBehavior'], cleanupBehavior);
+    cleanupBehavior = cleanup;
+    autoDeleteExpired = _bool(settings['autoDeleteExpired']) ??
+        cleanup == CleanupBehavior.autoDelete;
+    urgentAlerts = _bool(settings['urgentAlerts']) ?? urgentAlerts;
+    expiryReminders =
+        _bool(settings['expiryReminders']) ?? expiryReminders;
+    defaultSaveLocation = _enumByName(DefaultSaveLocation.values,
+        settings['defaultSaveLocation'], defaultSaveLocation);
+    appBackground = _enumByName(
+        AppBackgroundStyle.values, settings['appBackground'], appBackground);
+    defaultTimer =
+        _enumByName(TimerPreset.values, settings['defaultTimer'], defaultTimer);
+    final leadMinutes = _int(settings['notificationLeadMinutes']);
+    if (leadMinutes != null && leadMinutes > 0) {
+      notificationLeadTime = Duration(minutes: leadMinutes);
+    }
+    notifyListeners();
+  }
+
   void signIn(String email) {
     user = user.copyWith(email: email);
     notifyListeners();
@@ -137,16 +167,19 @@ class AppController extends ChangeNotifier {
     cleanupBehavior =
         value ? CleanupBehavior.autoDelete : CleanupBehavior.askFirst;
     if (value) deleteExpiredSnaps();
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
   void toggleUrgentAlerts(bool value) {
     urgentAlerts = value;
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
   void toggleExpiryReminders(bool value) {
     expiryReminders = value;
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
@@ -154,16 +187,25 @@ class AppController extends ChangeNotifier {
     cleanupBehavior = value;
     autoDeleteExpired = value == CleanupBehavior.autoDelete;
     if (autoDeleteExpired) deleteExpiredSnaps();
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
   void setDefaultSaveLocation(DefaultSaveLocation value) {
     defaultSaveLocation = value;
+    _saveSettingsToCloud();
+    notifyListeners();
+  }
+
+  void setAppBackground(AppBackgroundStyle value) {
+    appBackground = value;
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
   void setNotificationLeadTime(Duration value) {
     notificationLeadTime = value;
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
@@ -171,6 +213,7 @@ class AppController extends ChangeNotifier {
     defaultTimer = timer;
     selectedImportTimer = ImportTimerOption.fromPreset(
         timer.duration == null ? TimerPreset.thirtyMinutes : timer);
+    _saveSettingsToCloud();
     notifyListeners();
   }
 
@@ -178,15 +221,6 @@ class AppController extends ChangeNotifier {
     final next = timer ?? defaultTimer;
     selectedImportTimer = ImportTimerOption.fromPreset(
         next.duration == null ? TimerPreset.thirtyMinutes : next);
-    notifyListeners();
-  }
-
-  void useSampleImport() {
-    importDraft = const [
-      ImportDraftItem(type: MockType.receipt, title: 'Order confirmation'),
-      ImportDraftItem(type: MockType.chat, title: 'Chat snippet'),
-      ImportDraftItem(type: MockType.chart, title: 'Analytics chart'),
-    ];
     notifyListeners();
   }
 
@@ -210,16 +244,18 @@ class AppController extends ChangeNotifier {
 
   void addCustomImportTimer({required String label, required int minutes}) {
     final trimmed = label.trim();
+    final durationLabel = _customTimerLabel(minutes);
     final option = ImportTimerOption(
       id: 'custom-${DateTime.now().microsecondsSinceEpoch}',
-      label: trimmed.isEmpty ? _customTimerLabel(minutes) : trimmed,
-      subtitle: _customTimerLabel(minutes),
+      label: _customTimerDisplayName(trimmed, durationLabel),
+      subtitle: durationLabel,
       icon: Icons.timer_rounded,
       duration: Duration(minutes: minutes),
       isCustom: true,
     );
     customImportTimers = [...customImportTimers, option];
     selectedImportTimer = option;
+    _saveTimerToCloud(option);
     notifyListeners();
   }
 
@@ -236,10 +272,11 @@ class AppController extends ChangeNotifier {
         break;
       }
     }
+    final durationLabel = _customTimerLabel(minutes);
     final option = ImportTimerOption(
       id: id,
-      label: trimmed.isEmpty ? _customTimerLabel(minutes) : trimmed,
-      subtitle: _customTimerLabel(minutes),
+      label: _customTimerDisplayName(trimmed, durationLabel),
+      subtitle: durationLabel,
       icon: Icons.timer_rounded,
       duration: Duration(minutes: minutes),
       isCustom: true,
@@ -250,15 +287,22 @@ class AppController extends ChangeNotifier {
     if (selectedImportTimer.id == id || existing == null) {
       selectedImportTimer = option;
     }
+    _saveTimerToCloud(option);
     notifyListeners();
   }
 
   String _customTimerLabel(int minutes) {
-    if (minutes < 60) return '$minutes minutes';
+    if (minutes < 60) return '$minutes min';
     final hours = minutes ~/ 60;
     final remainder = minutes % 60;
-    if (remainder == 0) return hours == 1 ? '1 hour' : '$hours hours';
-    return '${hours}hr ${remainder} min';
+    if (remainder == 0) return hours == 1 ? '1 hr' : '$hours hr';
+    return '${hours} hr ${remainder} min';
+  }
+
+  String _customTimerDisplayName(String name, String durationLabel) {
+    return name.isEmpty || name.toLowerCase() == 'custom timer'
+        ? durationLabel
+        : name;
   }
 
   List<SnapItem> saveImport() {
@@ -270,7 +314,7 @@ class AppController extends ChangeNotifier {
         title: draft.title,
         note: draft.imagePath == null
             ? 'Timer started just now.'
-            : 'Imported from this emulator.',
+            : 'Imported from Photos.',
         type: draft.type,
         imagePath: draft.imagePath,
         createdAt: now,
@@ -286,6 +330,7 @@ class AppController extends ChangeNotifier {
     _snaps = [...saved, ..._snaps];
     lastSaved = saved;
     importDraft = const [];
+    _saveSnapsToCloud(saved);
     notifyListeners();
     return saved;
   }
@@ -309,30 +354,7 @@ class AppController extends ChangeNotifier {
     if (saved.isEmpty) return const [];
     _snaps = [...saved, ..._snaps];
     lastSaved = saved;
-    notifyListeners();
-    return saved;
-  }
-
-  List<SnapItem> saveSampleArchive() {
-    final now = DateTime.now();
-    final saved = const [
-      ImportDraftItem(type: MockType.receipt, title: 'Archived receipt'),
-      ImportDraftItem(type: MockType.travel, title: 'Archived QR code'),
-    ].asMap().entries.map((entry) {
-      final index = entry.key;
-      final draft = entry.value;
-      return SnapItem(
-        id: 'archive-sample-${now.microsecondsSinceEpoch}-$index',
-        title: draft.title,
-        note: 'Imported into Archive.',
-        type: draft.type,
-        createdAt: now,
-        expiresAt: null,
-        status: SnapStatus.kept,
-      );
-    }).toList();
-    _snaps = [...saved, ..._snaps];
-    lastSaved = saved;
+    _saveSnapsToCloud(saved);
     notifyListeners();
     return saved;
   }
@@ -342,6 +364,7 @@ class AppController extends ChangeNotifier {
       (snap) => snap.copyWith(
           expiresAt: null,
           resumeExpiresAt: null,
+          snoozedRemainingSeconds: null,
           status: SnapStatus.kept,
           note: 'Saved for later.'));
 
@@ -351,15 +374,70 @@ class AppController extends ChangeNotifier {
     _updateSnap(id, (snap) => snap.copyWith(title: trimmed));
   }
 
+  void setSnapTimer(String id, Duration duration, String label) {
+    final now = DateTime.now();
+    _updateSnap(
+        id,
+        (snap) => snap.copyWith(
+            createdAt: now,
+            expiresAt: now.add(duration),
+            resumeExpiresAt: null,
+            snoozedRemainingSeconds: null,
+            status: SnapStatus.active,
+            note: 'Timer changed to $label.'));
+  }
+
   void deleteSnap(String id) => _updateSnap(id, (snap) {
-        savedFolders = [
-          for (final folder in savedFolders)
-            folder.copyWith(
-                snapIds:
-                    folder.snapIds.where((snapId) => snapId != id).toList())
-        ];
+        final updatedFolders = <SavedFolder>[];
+        for (final folder in savedFolders) {
+          final nextFolder = folder.copyWith(
+              snapIds:
+                  folder.snapIds.where((snapId) => snapId != id).toList());
+          updatedFolders.add(nextFolder);
+          if (nextFolder.snapIds.length != folder.snapIds.length) {
+            _saveFolderToCloud(nextFolder);
+          }
+        }
+        savedFolders = updatedFolders;
         return snap.copyWith(status: SnapStatus.deleted);
       });
+
+  void restoreDeletedSnap(String id) => _updateSnap(
+      id,
+      (snap) => snap.copyWith(
+          expiresAt: null,
+          resumeExpiresAt: null,
+          snoozedRemainingSeconds: null,
+          status: SnapStatus.kept,
+          note: 'Restored to Saved.'));
+
+  void permanentlyDeleteSnap(String id) {
+    SnapItem? removed;
+    final remaining = <SnapItem>[];
+    for (final snap in _snaps) {
+      if (snap.id == id) {
+        removed = snap;
+      } else {
+        remaining.add(snap);
+      }
+    }
+    _snaps = remaining;
+    final updatedFolders = <SavedFolder>[];
+    for (final folder in savedFolders) {
+      final nextFolder = folder.copyWith(
+          snapIds: folder.snapIds.where((snapId) => snapId != id).toList());
+      updatedFolders.add(nextFolder);
+      if (nextFolder.snapIds.length != folder.snapIds.length) {
+        _saveFolderToCloud(nextFolder);
+      }
+    }
+    savedFolders = updatedFolders;
+    final snap = removed;
+    if (snap != null) {
+      _deleteSnapFromCloud(snap);
+    }
+    notifyListeners();
+  }
 
   SavedFolder createSavedFolder(String name) {
     final trimmed = name.trim();
@@ -369,6 +447,7 @@ class AppController extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
     savedFolders = [folder, ...savedFolders];
+    _saveFolderToCloud(folder);
     notifyListeners();
     return folder;
   }
@@ -376,42 +455,60 @@ class AppController extends ChangeNotifier {
   void renameSavedFolder(String id, String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
-    savedFolders = [
-      for (final folder in savedFolders)
-        folder.id == id ? folder.copyWith(name: trimmed) : folder
-    ];
+    SavedFolder? updatedFolder;
+    final nextFolders = <SavedFolder>[];
+    for (final folder in savedFolders) {
+      if (folder.id == id) {
+        updatedFolder = folder.copyWith(name: trimmed);
+        nextFolders.add(updatedFolder!);
+      } else {
+        nextFolders.add(folder);
+      }
+    }
+    savedFolders = nextFolders;
+    if (updatedFolder != null) _saveFolderToCloud(updatedFolder!);
     notifyListeners();
   }
 
   void deleteSavedFolder(String id) {
     savedFolders =
         savedFolders.where((folder) => folder.id != id).toList(growable: false);
+    _deleteFolderFromCloud(id);
     notifyListeners();
   }
 
   void addSnapToFolder({required String folderId, required String snapId}) {
-    savedFolders = [
-      for (final folder in savedFolders)
-        if (folder.id == folderId)
-          folder.snapIds.contains(snapId)
-              ? folder
-              : folder.copyWith(snapIds: [...folder.snapIds, snapId])
-        else
-          folder
-    ];
+    SavedFolder? updatedFolder;
+    final nextFolders = <SavedFolder>[];
+    for (final folder in savedFolders) {
+      if (folder.id == folderId && !folder.snapIds.contains(snapId)) {
+        updatedFolder = folder.copyWith(snapIds: [...folder.snapIds, snapId]);
+        nextFolders.add(updatedFolder!);
+      } else {
+        nextFolders.add(folder);
+      }
+    }
+    savedFolders = nextFolders;
+    if (updatedFolder != null) _saveFolderToCloud(updatedFolder!);
     notifyListeners();
   }
 
   void removeSnapFromFolder(
       {required String folderId, required String snapId}) {
-    savedFolders = [
-      for (final folder in savedFolders)
-        folder.id == folderId
-            ? folder.copyWith(
-                snapIds:
-                    folder.snapIds.where((itemId) => itemId != snapId).toList())
-            : folder
-    ];
+    SavedFolder? updatedFolder;
+    final nextFolders = <SavedFolder>[];
+    for (final folder in savedFolders) {
+      if (folder.id == folderId) {
+        updatedFolder = folder.copyWith(
+            snapIds:
+                folder.snapIds.where((itemId) => itemId != snapId).toList());
+        nextFolders.add(updatedFolder!);
+      } else {
+        nextFolders.add(folder);
+      }
+    }
+    savedFolders = nextFolders;
+    if (updatedFolder != null) _saveFolderToCloud(updatedFolder!);
     notifyListeners();
   }
 
@@ -455,51 +552,236 @@ class AppController extends ChangeNotifier {
           ? '${expired.first.title} expired and was deleted.'
           : '${expired.length} expired screenshots were deleted.',
     );
+    _saveSnapsToCloud(_snaps
+        .where(
+            (snap) => expired.any((expiredSnap) => expiredSnap.id == snap.id))
+        .toList());
     notifyListeners();
   }
 
   void snoozeSnap(String id, Duration duration) {
-    _updateSnap(
-        id,
-        (snap) => snap.copyWith(
-            expiresAt: DateTime.now().add(duration),
-            resumeExpiresAt: snap.resumeExpiresAt ?? snap.expiresAt,
-            status: SnapStatus.active,
-            note:
-                'Snoozed for ${duration.inMinutes >= 60 ? '${duration.inHours}hr' : '${duration.inMinutes} min'}.'));
+    final now = DateTime.now();
+    _updateSnap(id, (snap) {
+      if (snap.isSnoozed) return snap;
+      final remaining = snap.remaining(now);
+      if (remaining == null || remaining.isNegative) return snap;
+      return snap.copyWith(
+          expiresAt: null,
+          resumeExpiresAt: snap.expiresAt,
+          snoozedRemainingSeconds: remaining.inSeconds.clamp(1, 1 << 31),
+          status: SnapStatus.active,
+          note: 'Snoozed. Tap Unsnooze to resume the timer.');
+    });
   }
 
   void unsnoozeSnap(String id) {
-    _updateSnap(
-        id,
-        (snap) => snap.resumeExpiresAt == null
-            ? snap
-            : snap.copyWith(
-                expiresAt: snap.resumeExpiresAt,
-                resumeExpiresAt: null,
-                status: SnapStatus.active,
-                note: 'Timer resumed.'));
+    final now = DateTime.now();
+    _updateSnap(id, (snap) {
+      final frozen = snap.snoozedRemainingSeconds;
+      final originalExpiresAt = snap.resumeExpiresAt;
+      if (frozen == null || originalExpiresAt == null) return snap;
+      final total = originalExpiresAt.difference(snap.createdAt).inSeconds;
+      final elapsed = (total - frozen).clamp(0, total);
+      return snap.copyWith(
+          createdAt: now.subtract(Duration(seconds: elapsed)),
+          expiresAt: now.add(Duration(seconds: frozen)),
+          resumeExpiresAt: null,
+          snoozedRemainingSeconds: null,
+          status: SnapStatus.active,
+          note: 'Timer resumed.');
+    });
   }
 
   void _updateSnap(String id, SnapItem Function(SnapItem snap) update) {
-    _snaps = [for (final snap in _snaps) snap.id == id ? update(snap) : snap];
+    SnapItem? updatedSnap;
+    _snaps = [
+      for (final snap in _snaps)
+        if (snap.id == id) updatedSnap = update(snap) else snap
+    ];
+    final cloudSnap = updatedSnap;
+    if (cloudSnap != null) _saveSnapToCloud(cloudSnap);
     notifyListeners();
+  }
+
+  void _saveSnapToCloud(SnapItem snap) {
+    _markSyncStatus([snap.id], SnapSyncStatus.syncing);
+    unawaited(_saveSnapToCloudAsync(snap));
+  }
+
+  void _saveSnapsToCloud(List<SnapItem> snaps) {
+    if (snaps.isEmpty) return;
+    _markSyncStatus(
+        [for (final snap in snaps) snap.id], SnapSyncStatus.syncing);
+    unawaited(_saveSnapsToCloudAsync(snaps));
+  }
+
+  void _saveFolderToCloud(SavedFolder folder) {
+    unawaited(_firestoreRepository.saveFolder(folder).catchError((_) {
+      _showCloudSyncError('Folder changes could not sync.');
+    }));
+  }
+
+  void _deleteFolderFromCloud(String id) {
+    unawaited(_firestoreRepository.deleteFolder(id).catchError((_) {
+      _showCloudSyncError('Folder deletion could not sync.');
+    }));
+  }
+
+  void _saveTimerToCloud(ImportTimerOption timer) {
+    unawaited(_firestoreRepository.saveTimerPreset(timer).catchError((_) {
+      _showCloudSyncError('Timer preset could not sync.');
+    }));
+  }
+
+  void _deleteSnapFromCloud(SnapItem snap) {
+    unawaited(_deleteSnapFromCloudAsync(snap));
+  }
+
+  Future<void> _deleteSnapFromCloudAsync(SnapItem snap) async {
+    var failed = false;
+    try {
+      await _storageRepository.deleteSnapImage(snap);
+    } catch (_) {
+      failed = true;
+    }
+    try {
+      await _firestoreRepository.removeSnap(snap.id);
+    } catch (_) {
+      failed = true;
+    }
+    if (failed) {
+      _showCloudSyncError('Screenshot could not be permanently deleted.');
+    }
+  }
+
+  void _saveSettingsToCloud() {
+    unawaited(_firestoreRepository
+        .saveAppSettings(_settingsMap())
+        .catchError((_) {
+      _showCloudSyncError('Settings could not sync.');
+    }));
+  }
+
+  Map<String, Object?> _settingsMap() {
+    return {
+      'autoDeleteExpired': autoDeleteExpired,
+      'urgentAlerts': urgentAlerts,
+      'expiryReminders': expiryReminders,
+      'cleanupBehavior': cleanupBehavior.name,
+      'defaultSaveLocation': defaultSaveLocation.name,
+      'appBackground': appBackground.name,
+      'notificationLeadMinutes': notificationLeadTime.inMinutes,
+      'defaultTimer': defaultTimer.name,
+    };
+  }
+
+  T _enumByName<T extends Enum>(List<T> values, Object? name, T fallback) {
+    if (name is! String) return fallback;
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return fallback;
+  }
+
+  bool? _bool(Object? value) {
+    return value is bool ? value : null;
+  }
+
+  int? _int(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  Future<void> _saveSnapToCloudAsync(SnapItem snap) async {
+    try {
+      final cloudSnap = await _storageRepository.uploadSnapImageIfNeeded(snap);
+      final syncedSnap = cloudSnap.copyWith(syncStatus: SnapSyncStatus.synced);
+      await _firestoreRepository.saveSnap(syncedSnap);
+      _replaceLocalSnapAfterCloudUpload(syncedSnap);
+    } catch (_) {
+      _markSyncStatus([snap.id], SnapSyncStatus.failed);
+      _showCloudSyncError('Screenshot changes could not sync.');
+    }
+  }
+
+  Future<void> _saveSnapsToCloudAsync(List<SnapItem> snaps) async {
+    try {
+      final cloudSnaps = <SnapItem>[];
+      for (final snap in snaps) {
+        final cloudSnap =
+            await _storageRepository.uploadSnapImageIfNeeded(snap);
+        cloudSnaps.add(cloudSnap.copyWith(syncStatus: SnapSyncStatus.synced));
+      }
+      await _firestoreRepository.saveSnaps(cloudSnaps);
+      for (final snap in cloudSnaps) {
+        _replaceLocalSnapAfterCloudUpload(snap);
+      }
+    } catch (_) {
+      _markSyncStatus(
+          [for (final snap in snaps) snap.id], SnapSyncStatus.failed);
+      _showCloudSyncError('Some screenshots could not sync.');
+    }
+  }
+
+  void _markSyncStatus(List<String> ids, SnapSyncStatus status) {
+    if (ids.isEmpty) return;
+    final idSet = ids.toSet();
+    var changed = false;
+    _snaps = [
+      for (final snap in _snaps)
+        if (idSet.contains(snap.id) && snap.syncStatus != status)
+          _markSnapSync(snap, status, () => changed = true)
+        else
+          snap
+    ];
+    if (changed) notifyListeners();
+  }
+
+  SnapItem _markSnapSync(
+    SnapItem snap,
+    SnapSyncStatus status,
+    VoidCallback markChanged,
+  ) {
+    markChanged();
+    return snap.copyWith(syncStatus: status);
+  }
+
+  void _showCloudSyncError(String message) {
+    latestNotice = AppNotice(id: ++_noticeId, message: message);
+    notifyListeners();
+  }
+
+  void _replaceLocalSnapAfterCloudUpload(SnapItem cloudSnap) {
+    if (cloudSnap.imageDownloadUrl == null && cloudSnap.storagePath == null) {
+      return;
+    }
+    var changed = false;
+    _snaps = [
+      for (final snap in _snaps)
+        _cloudUploadReplacement(snap, cloudSnap, () => changed = true)
+    ];
+    if (changed) notifyListeners();
+  }
+
+  SnapItem _cloudUploadReplacement(
+    SnapItem current,
+    SnapItem cloudSnap,
+    VoidCallback markChanged,
+  ) {
+    if (current.id != cloudSnap.id ||
+        (current.imageDownloadUrl == cloudSnap.imageDownloadUrl &&
+            current.storagePath == cloudSnap.storagePath)) {
+      return current;
+    }
+    markChanged();
+    return cloudSnap;
   }
 
   void _startExpiryWatcher() {
     _expiryWatcher?.cancel();
     _expiryWatcher =
         Timer.periodic(const Duration(seconds: 1), (_) => deleteExpiredSnaps());
-  }
-
-  void resetDemoData() {
-    _snaps = _sampleSnaps(DateTime.now());
-    importDraft = const [];
-    savedFolders = const [];
-    lastSaved = const [];
-    latestNotice = AppNotice(
-        id: ++_noticeId, message: 'Demo data has been reset for preview.');
-    notifyListeners();
   }
 
   @override

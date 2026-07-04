@@ -7,7 +7,7 @@ Firestore service layer for:
 
 ## Current State
 
-- `firebase_core`, `firebase_auth`, and `cloud_firestore` are added to
+- `firebase_core`, `firebase_auth`, `cloud_firestore`, and `firebase_storage` are added to
   `pubspec.yaml`.
 - `lib/services/firebase_bootstrap.dart` initializes Firebase with
   `lib/firebase_options.dart`.
@@ -18,7 +18,10 @@ Firestore service layer for:
 - `firebase.json` is prepared for Android config output and Firestore rules.
 - `lib/services/auth_repository.dart` contains the first Firebase Auth methods.
 - `lib/services/firestore_repository.dart` contains the first database methods.
+- `lib/services/storage_repository.dart` uploads screenshot image files to
+  Firebase Storage.
 - `firestore.rules` protects each user's data by Firebase Auth uid.
+- `storage.rules` protects each user's screenshot files by Firebase Auth uid.
 
 ## Android Config
 
@@ -39,7 +42,9 @@ Firestore service layer for:
 
 6. In Firebase Console, create Cloud Firestore.
 
-7. Run:
+7. In Firebase Console, create Firebase Storage.
+
+8. Run:
 
    `flutter clean`
    `flutter pub get`
@@ -62,11 +67,20 @@ The app will store all user data under the signed-in user's uid:
 - `users/{uid}/activity/{eventId}`: lightweight activity history for future
   audit or notification features.
 
+Screenshot images are stored in Firebase Storage:
+
+- `users/{uid}/screenshots/{screenshotId}.jpg`
+
+Firebase Storage requires a billing-enabled Firebase project. For release,
+keep costs controlled by uploading only user-selected screenshots, deleting
+test data you no longer need, setting a Google Cloud budget alert, and
+monitoring Storage usage during testing.
+
 ## Deploy Firestore Rules
 
 After Firebase CLI login is ready, run:
 
-`firebase deploy --only firestore:rules`
+`firebase deploy --only firestore:rules,storage`
 
 ## Next Backend Steps
 
@@ -86,6 +100,9 @@ If you want FlutterFire to generate config automatically, run:
 
 Then:
 
-`flutterfire configure --project=androidapp-snapclean --platforms=android --android-package-name=com.example.snapclean_flutter --out=lib/firebase_options.dart --yes`
+For release, replace `com.example.snapclean_flutter` with the production
+Android application id you register in Firebase:
+
+`flutterfire configure --project=androidapp-snapclean --platforms=android --android-package-name=YOUR.PRODUCTION.PACKAGE --out=lib/firebase_options.dart --yes`
 
 The CLI requires your Firebase account session. Codex cannot complete this without access to your Firebase login token.

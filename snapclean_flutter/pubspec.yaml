@@ -1,5 +1,5 @@
 name: snapclean_flutter
-description: UI-only SnapClean prototype.
+description: Screenshot cleanup and archive app with timers, folders, and account sync.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -12,6 +12,7 @@ dependencies:
   firebase_core: ^3.8.1
   cloud_firestore: ^5.5.1
   firebase_auth: ^5.3.4
+  firebase_storage: ^12.4.10
 
 dev_dependencies:
   flutter_test:

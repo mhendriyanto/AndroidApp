@@ -61,10 +61,14 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                         child: MiniAction(
-                            label: 'Snooze',
-                            icon: Icons.schedule_rounded,
-                            onTap: () => controller.snoozeSnap(
-                                item.id, const Duration(hours: 1)))),
+                            label: item.isSnoozed ? 'Unsnooze' : 'Snooze',
+                            icon: item.isSnoozed
+                                ? Icons.play_arrow_rounded
+                                : Icons.schedule_rounded,
+                            onTap: item.isSnoozed
+                                ? () => controller.unsnoozeSnap(item.id)
+                                : () => controller.snoozeSnap(
+                                    item.id, const Duration(hours: 1)))),
                     const SizedBox(width: 8),
                     Expanded(
                         child: MiniAction(
@@ -84,14 +88,23 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
     return [
       const _ExpiringFilterTab(label: 'All'),
       const _ExpiringFilterTab(
-          label: '10 min', duration: Duration(minutes: 10)),
+          label: '10 min', max: Duration(minutes: 10)),
       const _ExpiringFilterTab(
-          label: '30 min', duration: Duration(minutes: 30)),
-      const _ExpiringFilterTab(label: '1hr', duration: Duration(hours: 1)),
+          label: '30 min',
+          min: Duration(minutes: 10),
+          max: Duration(minutes: 30)),
+      const _ExpiringFilterTab(
+          label: '1 hr',
+          min: Duration(minutes: 30),
+          max: Duration(hours: 1)),
       for (final timer in controller.customImportTimers)
         if (timer.duration != null)
-          _ExpiringFilterTab(label: timer.label, duration: timer.duration),
-      const _ExpiringFilterTab(label: 'Today', today: true),
+          _ExpiringFilterTab(
+              label: timer.label,
+              min: _rangeStartFor(timer.duration!),
+              max: timer.duration),
+      const _ExpiringFilterTab(
+          label: 'Today', min: Duration(hours: 1), today: true),
     ];
   }
 
@@ -101,32 +114,57 @@ class _ExpiringScreenState extends State<ExpiringScreen> {
     final tab = tabs[filter.clamp(0, tabs.length - 1)];
     if (tab.today) {
       return controller.activeSnaps.where((item) {
+        final left = item.remaining(now);
         final expiresAt = item.expiresAt;
         if (expiresAt == null || expiresAt.isBefore(now)) return false;
+        if (!_isAfterMin(left, tab.min)) return false;
         return expiresAt.isBefore(_startOfTomorrow(now));
       }).toList();
     }
-    final duration = tab.duration;
-    if (duration == null) return controller.expiringSnaps;
+    final max = tab.max;
+    if (max == null) return controller.expiringSnaps;
     return controller.expiringSnaps.where((item) {
       final left = item.remaining(now);
-      return left != null && !left.isNegative && left <= duration;
+      return _isInRange(left, min: tab.min, max: max);
     }).toList();
+  }
+
+  bool _isInRange(Duration? left, {Duration? min, required Duration max}) {
+    if (left == null || left.isNegative) return false;
+    if (!_isAfterMin(left, min)) return false;
+    return left <= max;
+  }
+
+  bool _isAfterMin(Duration? left, Duration? min) {
+    if (left == null || left.isNegative) return false;
+    return min == null || left > min;
   }
 
   DateTime _startOfTomorrow(DateTime now) {
     final tomorrow = now.add(const Duration(days: 1));
     return DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
   }
+
+  Duration? _rangeStartFor(Duration duration) {
+    if (duration <= const Duration(minutes: 10)) return null;
+    if (duration <= const Duration(minutes: 30)) {
+      return const Duration(minutes: 10);
+    }
+    if (duration <= const Duration(hours: 1)) {
+      return const Duration(minutes: 30);
+    }
+    return const Duration(hours: 1);
+  }
 }
 
 class _ExpiringFilterTab {
   final String label;
-  final Duration? duration;
+  final Duration? min;
+  final Duration? max;
   final bool today;
 
   const _ExpiringFilterTab(
-      {required this.label, this.duration, this.today = false});
+      {required this.label, this.min, this.max, this.today = false});
 }
 
 class MiniAction extends StatelessWidget {

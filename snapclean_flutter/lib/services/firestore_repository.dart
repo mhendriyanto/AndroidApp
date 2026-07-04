@@ -31,6 +31,10 @@ class FirestoreRepository {
     return _firestore.doc(FirestorePaths.username(normalizeUsername(username)));
   }
 
+  DocumentReference<Map<String, dynamic>> emailLookupRef(String email) {
+    return _firestore.doc(FirestorePaths.emailLookup(normalizeEmail(email)));
+  }
+
   CollectionReference<Map<String, dynamic>> screenshotsRef(String uid) {
     return _firestore.collection(FirestorePaths.screenshots(uid));
   }
@@ -67,15 +71,21 @@ class FirestoreRepository {
     required String username,
     required String email,
     String? uid,
-  }) {
+  }) async {
     final userId = requireUserId(uid);
-    return usernameRef(username).set({
+    await usernameRef(username).set({
       'uid': userId,
       'email': email.trim(),
       'username': username.trim(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await emailLookupRef(email).set({
+      'uid': userId,
+      'email': email.trim(),
+      'username': username.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<String?> emailForUsername(String username) async {
@@ -83,6 +93,13 @@ class FirestoreRepository {
     final data = document.data();
     final email = data?['email'];
     return email is String ? email : null;
+  }
+
+  Future<String?> usernameForEmail(String email) async {
+    final document = await emailLookupRef(email).get();
+    final data = document.data();
+    final username = data?['username'];
+    return username is String ? username : null;
   }
 
   Stream<UserProfile?> watchUserProfile({String? uid}) {
@@ -134,6 +151,14 @@ class FirestoreRepository {
             snapshot.docs.map(FirestoreMappers.snapFromDocument).toList());
   }
 
+  Future<List<SnapItem>> fetchSnaps({String? uid}) async {
+    final userId = requireUserId(uid);
+    final snapshot = await screenshotsRef(userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs.map(FirestoreMappers.snapFromDocument).toList();
+  }
+
   Future<void> markSnapDeleted(String snapId, {String? uid}) {
     final userId = requireUserId(uid);
     return screenshotsRef(userId).doc(snapId).set(
@@ -168,6 +193,13 @@ class FirestoreRepository {
             snapshot.docs.map(FirestoreMappers.folderFromDocument).toList());
   }
 
+  Future<List<SavedFolder>> fetchFolders({String? uid}) async {
+    final userId = requireUserId(uid);
+    final snapshot =
+        await foldersRef(userId).orderBy('createdAt', descending: true).get();
+    return snapshot.docs.map(FirestoreMappers.folderFromDocument).toList();
+  }
+
   Future<void> deleteFolder(String folderId, {String? uid}) {
     final userId = requireUserId(uid);
     return foldersRef(userId).doc(folderId).delete();
@@ -187,12 +219,27 @@ class FirestoreRepository {
     );
   }
 
+  Future<Map<String, dynamic>> fetchAppSettings({String? uid}) async {
+    final userId = requireUserId(uid);
+    final document = await appSettingsRef(userId).get();
+    return document.data() ?? const <String, dynamic>{};
+  }
+
   Future<void> saveTimerPreset(ImportTimerOption timer, {String? uid}) {
     final userId = requireUserId(uid);
     return timerPresetsRef(userId).doc(timer.id).set(
           FirestoreMappers.timerOptionToMap(timer),
           SetOptions(merge: true),
         );
+  }
+
+  Future<List<ImportTimerOption>> fetchTimerPresets({String? uid}) async {
+    final userId = requireUserId(uid);
+    final snapshot = await timerPresetsRef(userId).get();
+    return snapshot.docs
+        .map(FirestoreMappers.timerOptionFromDocument)
+        .where((timer) => timer.duration != null)
+        .toList(growable: false);
   }
 
   Future<void> logActivity(
@@ -210,5 +257,9 @@ class FirestoreRepository {
 
   static String normalizeUsername(String username) {
     return username.trim().toLowerCase();
+  }
+
+  static String normalizeEmail(String email) {
+    return email.trim().toLowerCase();
   }
 }

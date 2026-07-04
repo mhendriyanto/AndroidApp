@@ -85,7 +85,7 @@ class MainActivity : FlutterActivity() {
             // Some providers grant temporary read access only; copying still works.
         }
         val input = contentResolver.openInputStream(uri) ?: return null
-        val directory = File(cacheDir, "snapclean_imports").apply { mkdirs() }
+        val directory = File(filesDir, "snapclean_imports").apply { mkdirs() }
         val output = File(directory, "image_${System.currentTimeMillis()}_$index.jpg")
         input.use { source ->
             output.outputStream().use { target ->

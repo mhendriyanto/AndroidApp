@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_repository.dart';
+import '../../services/firestore_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 
@@ -23,7 +24,7 @@ class RecoveryScreen extends StatefulWidget {
 
   const RecoveryScreen.username({super.key})
       : title = 'Find username',
-        body = 'Use your recovery email to preview account recovery.',
+        body = 'Use your recovery email to find your account.',
         fieldLabel = 'Recovery email',
         button = 'Find account',
         icon = Icons.search_rounded,
@@ -36,6 +37,7 @@ class RecoveryScreen extends StatefulWidget {
 class _RecoveryScreenState extends State<RecoveryScreen> {
   final field = TextEditingController();
   final authRepository = AuthRepository();
+  final firestoreRepository = FirestoreRepository();
   bool isLoading = false;
 
   @override
@@ -66,7 +68,11 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                     label: widget.fieldLabel, value: '', controller: field),
                 const SizedBox(height: 20),
                 PrimaryButton(
-                    label: isLoading ? 'Sending...' : widget.button,
+                    label: isLoading
+                        ? widget.sendsPasswordReset
+                            ? 'Sending...'
+                            : 'Searching...'
+                        : widget.button,
                     icon: widget.icon,
                     onTap: isLoading ? () {} : _showRecoveryResult),
                 const SizedBox(height: 18),
@@ -87,7 +93,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
       return;
     }
     if (!widget.sendsPasswordReset) {
-      _showMessage('Username recovery still needs a profile lookup screen.');
+      await _recoverUsername(trimmedEmail);
       return;
     }
 
@@ -99,6 +105,24 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       _showMessage(error.message ?? 'Unable to send reset link right now.');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _recoverUsername(String email) async {
+    setState(() => isLoading = true);
+    try {
+      final username = await firestoreRepository.usernameForEmail(email);
+      if (!mounted) return;
+      if (username == null || username.isEmpty) {
+        _showMessage('No username was found for that email.');
+        return;
+      }
+      _showMessage('Your username is $username.');
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Unable to find that username right now.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }

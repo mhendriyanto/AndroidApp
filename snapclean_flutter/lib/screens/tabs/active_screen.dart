@@ -8,8 +8,7 @@ import '../../widgets/snap_widgets.dart';
 import '../snap_detail_screen.dart';
 
 class ActiveScreen extends StatefulWidget {
-  final VoidCallback onImport;
-  const ActiveScreen({required this.onImport, super.key});
+  const ActiveScreen({super.key});
 
   @override
   State<ActiveScreen> createState() => _ActiveScreenState();
@@ -18,6 +17,8 @@ class ActiveScreen extends StatefulWidget {
 class _ActiveScreenState extends State<ActiveScreen> {
   int filter = 0;
   String query = '';
+  bool selecting = false;
+  final selectedIds = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -62,29 +63,52 @@ class _ActiveScreenState extends State<ActiveScreen> {
           Segmented(
               labels: [for (final tab in tabs) tab.label],
               index: filter,
-              onChanged: (next) => setState(() => filter = next)),
-          SectionHeader(title: 'Screenshots', action: '${items.length} shown'),
+              onChanged: (next) => setState(() {
+                    filter = next;
+                    selectedIds.clear();
+                  })),
+          SectionHeader(
+              title: 'Screenshots',
+              action: selecting ? 'Cancel' : 'Select',
+              onAction: () => setState(() {
+                    selecting = !selecting;
+                    selectedIds.clear();
+                  })),
+          if (selecting)
+            BatchActionBar(
+              count: selectedIds.length,
+              primaryLabel: 'Keep',
+              primaryIcon: Icons.all_inclusive_rounded,
+              onPrimary: selectedIds.isEmpty
+                  ? null
+                  : () {
+                      for (final id in selectedIds.toList()) {
+                        controller.keepSnap(id);
+                      }
+                      setState(() {
+                        selecting = false;
+                        selectedIds.clear();
+                      });
+                    },
+              secondaryLabel: 'Delete',
+              secondaryIcon: Icons.delete_outline_rounded,
+              onSecondary: selectedIds.isEmpty
+                  ? null
+                  : () => _confirmBatchDelete(context, controller),
+            )
+          else
+            SectionHeader(title: 'Shown', action: '${items.length} items'),
           if (items.isEmpty)
-            Column(
-              children: [
-                EmptyStateCard(
-                  icon: query.trim().isEmpty
-                      ? Icons.hourglass_empty_rounded
-                      : Icons.search_off_rounded,
-                  title: query.trim().isEmpty
-                      ? 'No active timers'
-                      : 'No results found',
-                  subtitle: query.trim().isEmpty
-                      ? 'Import screenshots and set a timer to keep your camera roll clean.'
-                      : 'Try searching by screenshot name, note, or timer group.',
-                ),
-                if (controller.activeSnaps.isEmpty && query.trim().isEmpty)
-                  PrimaryButton(
-                    label: 'Import Photos',
-                    icon: Icons.add_photo_alternate_rounded,
-                    onTap: widget.onImport,
-                  ),
-              ],
+            EmptyStateCard(
+              icon: query.trim().isEmpty
+                  ? Icons.hourglass_empty_rounded
+                  : Icons.search_off_rounded,
+              title: query.trim().isEmpty
+                  ? 'No active timers'
+                  : 'No results found',
+              subtitle: query.trim().isEmpty
+                  ? 'Use the plus button to import screenshots and set a timer.'
+                  : 'Try searching by screenshot name, note, or timer group.',
             )
           else
             for (final item in items)
@@ -97,29 +121,41 @@ class _ActiveScreenState extends State<ActiveScreen> {
                 ),
                 actions: Row(
                   children: [
-                    Expanded(
-                        child: MiniAction(
-                            label: 'Keep',
-                            icon: Icons.all_inclusive_rounded,
-                            onTap: () => controller.keepSnap(item.id))),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: MiniAction(
-                            label: item.isSnoozed ? 'Unsnooze' : 'Snooze',
-                            icon: item.isSnoozed
-                                ? Icons.play_arrow_rounded
-                                : Icons.schedule_rounded,
-                            onTap: item.isSnoozed
-                                ? () => controller.unsnoozeSnap(item.id)
-                                : () => controller.snoozeSnap(
-                                    item.id, const Duration(hours: 1)))),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: MiniAction(
-                            label: 'Delete',
-                            icon: Icons.delete_rounded,
-                            danger: true,
-                            onTap: () => _confirmDelete(context, item.id))),
+                    if (selecting)
+                      Expanded(
+                        child: CheckboxListTile(
+                          value: selectedIds.contains(item.id),
+                          onChanged: (_) => _toggleSelected(item.id),
+                          title: const Text('Select'),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      )
+                    else ...[
+                      Expanded(
+                          child: MiniAction(
+                              label: 'Keep',
+                              icon: Icons.all_inclusive_rounded,
+                              onTap: () => controller.keepSnap(item.id))),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: MiniAction(
+                              label: item.isSnoozed ? 'Unsnooze' : 'Snooze',
+                              icon: item.isSnoozed
+                                  ? Icons.play_arrow_rounded
+                                  : Icons.schedule_rounded,
+                              onTap: item.isSnoozed
+                                  ? () => controller.unsnoozeSnap(item.id)
+                                  : () => controller.snoozeSnap(
+                                      item.id, const Duration(hours: 1)))),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: MiniAction(
+                              label: 'Delete',
+                              icon: Icons.delete_rounded,
+                              danger: true,
+                              onTap: () => _confirmDelete(context, item.id))),
+                    ],
                   ],
                 ),
               ),
@@ -153,16 +189,52 @@ class _ActiveScreenState extends State<ActiveScreen> {
     });
   }
 
+  void _confirmBatchDelete(BuildContext context, AppController controller) {
+    showConfirmSheet(context,
+            title: 'Delete selected?',
+            message:
+                '${selectedIds.length} screenshots will move to Recently Deleted.',
+            confirmLabel: 'Delete',
+            icon: Icons.delete_outline_rounded,
+            danger: true)
+        .then((confirmed) {
+      if (!confirmed || !mounted) return;
+      for (final id in selectedIds.toList()) {
+        controller.deleteSnap(id);
+      }
+      setState(() {
+        selecting = false;
+        selectedIds.clear();
+      });
+    });
+  }
+
+  void _toggleSelected(String id) {
+    setState(() {
+      if (!selectedIds.add(id)) selectedIds.remove(id);
+    });
+  }
+
   List<_TimerFilterTab> _tabs(AppController controller) {
     return [
       const _TimerFilterTab(label: 'All'),
-      const _TimerFilterTab(label: '10 min', duration: Duration(minutes: 10)),
-      const _TimerFilterTab(label: '30 min', duration: Duration(minutes: 30)),
-      const _TimerFilterTab(label: '1hr', duration: Duration(hours: 1)),
+      const _TimerFilterTab(label: '10 min', max: Duration(minutes: 10)),
+      const _TimerFilterTab(
+          label: '30 min',
+          min: Duration(minutes: 10),
+          max: Duration(minutes: 30)),
+      const _TimerFilterTab(
+          label: '1 hr',
+          min: Duration(minutes: 30),
+          max: Duration(hours: 1)),
       for (final timer in controller.customImportTimers)
         if (timer.duration != null)
-          _TimerFilterTab(label: timer.label, duration: timer.duration),
-      const _TimerFilterTab(label: 'Today', today: true),
+          _TimerFilterTab(
+              label: timer.label,
+              min: _rangeStartFor(timer.duration!),
+              max: timer.duration),
+      const _TimerFilterTab(
+          label: 'Today', min: Duration(hours: 1), today: true),
     ];
   }
 
@@ -172,32 +244,115 @@ class _ActiveScreenState extends State<ActiveScreen> {
     final tab = tabs[filter.clamp(0, tabs.length - 1)];
     if (tab.today) {
       return controller.activeSnaps.where((item) {
+        final left = item.remaining(now);
         final expiresAt = item.expiresAt;
         if (expiresAt == null || expiresAt.isBefore(now)) return false;
+        if (!_isAfterMin(left, tab.min)) return false;
         return expiresAt.isBefore(_startOfTomorrow(now));
       }).toList();
     }
-    final duration = tab.duration;
-    if (duration == null) return controller.activeSnaps;
+    final max = tab.max;
+    if (max == null) return controller.activeSnaps;
     return controller.activeSnaps.where((item) {
       final left = item.remaining(now);
-      return left != null && !left.isNegative && left <= duration;
+      return _isInRange(left, min: tab.min, max: max);
     }).toList();
+  }
+
+  bool _isInRange(Duration? left, {Duration? min, required Duration max}) {
+    if (left == null || left.isNegative) return false;
+    if (!_isAfterMin(left, min)) return false;
+    return left <= max;
+  }
+
+  bool _isAfterMin(Duration? left, Duration? min) {
+    if (left == null || left.isNegative) return false;
+    return min == null || left > min;
   }
 
   DateTime _startOfTomorrow(DateTime now) {
     final tomorrow = now.add(const Duration(days: 1));
     return DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
   }
+
+  Duration? _rangeStartFor(Duration duration) {
+    if (duration <= const Duration(minutes: 10)) return null;
+    if (duration <= const Duration(minutes: 30)) {
+      return const Duration(minutes: 10);
+    }
+    if (duration <= const Duration(hours: 1)) {
+      return const Duration(minutes: 30);
+    }
+    return const Duration(hours: 1);
+  }
 }
 
 class _TimerFilterTab {
   final String label;
-  final Duration? duration;
+  final Duration? min;
+  final Duration? max;
   final bool today;
 
   const _TimerFilterTab(
-      {required this.label, this.duration, this.today = false});
+      {required this.label, this.min, this.max, this.today = false});
+}
+
+class BatchActionBar extends StatelessWidget {
+  final int count;
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final VoidCallback? onPrimary;
+  final String secondaryLabel;
+  final IconData secondaryIcon;
+  final VoidCallback? onSecondary;
+  const BatchActionBar(
+      {required this.count,
+      required this.primaryLabel,
+      required this.primaryIcon,
+      required this.onPrimary,
+      required this.secondaryLabel,
+      required this.secondaryIcon,
+      required this.onSecondary,
+      super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.checklist_rounded, color: AppColors.brand),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text('$count selected', style: AppText.value)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onPrimary,
+                  icon: Icon(primaryIcon, size: 18),
+                  label: Text(primaryLabel),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onSecondary,
+                  icon: Icon(secondaryIcon, size: 18),
+                  label: Text(secondaryLabel),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class MiniAction extends StatelessWidget {

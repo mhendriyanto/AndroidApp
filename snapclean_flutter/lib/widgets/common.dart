@@ -52,30 +52,46 @@ class AppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 112),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 14)],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_titleCase(title), style: AppText.title),
-                    ],
+    final background = SnapCleanScope.of(context).appBackground;
+    final titleStyle = background.isDark
+        ? AppText.title.copyWith(color: Colors.white)
+        : AppText.title;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: background.colors,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          physics: scrollable ? null : const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 112),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: 14)],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_titleCase(title), style: titleStyle),
+                      ],
+                    ),
                   ),
-                ),
-                if (trailing != null) ...[const SizedBox(width: 14), trailing!],
-              ],
-            ),
-            const SizedBox(height: 16),
-            child,
-          ],
+                  if (trailing != null) ...[
+                    const SizedBox(width: 14),
+                    trailing!
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              child,
+            ],
+          ),
         ),
       ),
     );
@@ -122,11 +138,13 @@ class AppField extends StatelessWidget {
   final String label;
   final String value;
   final TextEditingController? controller;
+  final TextInputType? keyboardType;
   final bool obscure;
   const AppField(
       {required this.label,
       required this.value,
       this.controller,
+      this.keyboardType,
       this.obscure = false,
       super.key});
 
@@ -151,6 +169,7 @@ class AppField extends StatelessWidget {
               ? Text(value, style: AppText.value)
               : TextField(
                   controller: controller,
+                  keyboardType: keyboardType,
                   obscureText: obscure,
                   style: AppText.value,
                   decoration: const InputDecoration(

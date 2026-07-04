@@ -31,6 +31,8 @@ class _SnapItemCardState extends State<SnapItemCard> {
   void didUpdateWidget(covariant SnapItemCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.item.expiresAt != widget.item.expiresAt ||
+        oldWidget.item.snoozedRemainingSeconds !=
+            widget.item.snoozedRemainingSeconds ||
         oldWidget.item.status != widget.item.status) {
       _syncTicker();
     }
@@ -57,6 +59,7 @@ class _SnapItemCardState extends State<SnapItemCard> {
   }
 
   bool _shouldTick() {
+    if (widget.item.isSnoozed) return false;
     final left = widget.item.remaining(DateTime.now());
     return widget.item.status == SnapStatus.active &&
         left != null &&
@@ -85,7 +88,9 @@ class _SnapItemCardState extends State<SnapItemCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 MiniShot(
-                    type: widget.item.type, imagePath: widget.item.imagePath),
+                    type: widget.item.type,
+                    imagePath: widget.item.imagePath,
+                    imageUrl: widget.item.imageDownloadUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -110,6 +115,8 @@ class _SnapItemCardState extends State<SnapItemCard> {
                               height: 1.42,
                               fontWeight: FontWeight.w600,
                               color: AppColors.muted)),
+                      const SizedBox(height: 8),
+                      SyncStatusPill(status: widget.item.syncStatus),
                       if (progress != null) ...[
                         const SizedBox(height: 12),
                         ClipRRect(
@@ -133,6 +140,34 @@ class _SnapItemCardState extends State<SnapItemCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class SyncStatusPill extends StatelessWidget {
+  final SnapSyncStatus status;
+  const SyncStatusPill({required this.status, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BadgePill(
+      label: switch (status) {
+        SnapSyncStatus.pending => 'Pending sync',
+        SnapSyncStatus.syncing => 'Uploading',
+        SnapSyncStatus.synced => 'Synced',
+        SnapSyncStatus.failed => 'Sync failed',
+      },
+      icon: switch (status) {
+        SnapSyncStatus.pending => Icons.cloud_queue_rounded,
+        SnapSyncStatus.syncing => Icons.cloud_upload_rounded,
+        SnapSyncStatus.synced => Icons.cloud_done_rounded,
+        SnapSyncStatus.failed => Icons.cloud_off_rounded,
+      },
+      kind: switch (status) {
+        SnapSyncStatus.failed => BadgeKind.danger,
+        SnapSyncStatus.synced => BadgeKind.keep,
+        _ => BadgeKind.normal,
+      },
     );
   }
 }

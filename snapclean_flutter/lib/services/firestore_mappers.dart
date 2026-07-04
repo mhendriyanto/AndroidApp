@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 import '../models/snap_item.dart';
 
@@ -9,10 +10,14 @@ class FirestoreMappers {
       'note': snap.note,
       'type': snap.type.name,
       'localImagePath': snap.imagePath,
+      'imageDownloadUrl': snap.imageDownloadUrl,
+      'storagePath': snap.storagePath,
       'createdAt': Timestamp.fromDate(snap.createdAt),
       'expiresAt': _timestampOrNull(snap.expiresAt),
       'resumeExpiresAt': _timestampOrNull(snap.resumeExpiresAt),
+      'snoozedRemainingSeconds': snap.snoozedRemainingSeconds,
       'status': snap.status.name,
+      'syncStatus': snap.syncStatus.name,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -27,10 +32,15 @@ class FirestoreMappers {
       note: _string(data['note']),
       type: _enumByName(MockType.values, data['type'], MockType.receipt),
       imagePath: _nullableString(data['localImagePath']),
+      imageDownloadUrl: _nullableString(data['imageDownloadUrl']),
+      storagePath: _nullableString(data['storagePath']),
       createdAt: _dateTime(data['createdAt']),
       expiresAt: _nullableDateTime(data['expiresAt']),
       resumeExpiresAt: _nullableDateTime(data['resumeExpiresAt']),
+      snoozedRemainingSeconds: _nullableInt(data['snoozedRemainingSeconds']),
       status: _enumByName(SnapStatus.values, data['status'], SnapStatus.active),
+      syncStatus: _enumByName(
+          SnapSyncStatus.values, data['syncStatus'], SnapSyncStatus.synced),
     );
   }
 
@@ -87,6 +97,22 @@ class FirestoreMappers {
     };
   }
 
+  static ImportTimerOption timerOptionFromDocument(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data() ?? const <String, dynamic>{};
+    final minutes = _nullableInt(data['minutes']);
+    return ImportTimerOption(
+      id: document.id,
+      label: _string(data['label'], fallback: 'Custom timer'),
+      subtitle: _string(data['subtitle'],
+          fallback: minutes == null ? 'Custom' : '$minutes min'),
+      icon: Icons.timer_rounded,
+      duration: minutes == null ? null : Duration(minutes: minutes),
+      isCustom: _bool(data['isCustom']) ?? true,
+    );
+  }
+
   static Timestamp? _timestampOrNull(DateTime? value) {
     if (value == null) return null;
     return Timestamp.fromDate(value);
@@ -129,5 +155,15 @@ class FirestoreMappers {
   static List<String> _stringList(Object? value) {
     if (value is! List) return const [];
     return value.whereType<String>().toList(growable: false);
+  }
+
+  static int? _nullableInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  static bool? _bool(Object? value) {
+    return value is bool ? value : null;
   }
 }

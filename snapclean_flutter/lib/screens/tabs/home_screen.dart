@@ -42,14 +42,12 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          AppSearchBar(onTap: onActive),
-          const SizedBox(height: 16),
           SectionHeader(
               title: 'Current Timer Mix',
-              action: '${recent.length} shots',
+              action: '${controller.activeSnaps.length} timed',
               onAction: onActive),
           DonutCard(
-            total: recent.length,
+            total: controller.activeSnaps.length,
             segments: _timerMix(controller, now),
           ),
           StatStrip(items: [
@@ -71,7 +69,7 @@ class HomeScreen extends StatelessWidget {
           ]),
           SectionHeader(
               title: 'Recents',
-              action: '${recent.length} docs',
+              action: 'View All',
               onAction: onActive),
           if (recent.isEmpty)
             EmptyStateCard(
@@ -99,28 +97,30 @@ class HomeScreen extends StatelessWidget {
   }
 
   List<TimerMixSegment> _timerMix(AppController controller, DateTime now) {
-    var under30 = 0;
-    var under60 = 0;
+    var under10 = 0;
+    var tenTo30 = 0;
+    var thirtyTo60 = 0;
     var later = 0;
     for (final item in controller.activeSnaps) {
       final left = item.remaining(now);
       if (left == null || left.isNegative) continue;
-      if (left <= const Duration(minutes: 30)) {
-        under30++;
+      if (left <= const Duration(minutes: 10)) {
+        under10++;
+      } else if (left <= const Duration(minutes: 30)) {
+        tenTo30++;
       } else if (left <= const Duration(hours: 1)) {
-        under60++;
+        thirtyTo60++;
       } else {
         later++;
       }
     }
     return [
-      TimerMixSegment(color: AppColors.rose, label: '30 min', count: under30),
-      TimerMixSegment(color: AppColors.amber, label: '1hr', count: under60),
-      TimerMixSegment(color: AppColors.brand, label: 'Later', count: later),
       TimerMixSegment(
-          color: AppColors.mint,
-          label: 'Forever',
-          count: controller.keptSnaps.length),
+          color: AppColors.rose, label: 'Under 10 min', count: under10),
+      TimerMixSegment(color: AppColors.amber, label: '30 min', count: tenTo30),
+      TimerMixSegment(
+          color: AppColors.brand, label: '1 hr', count: thirtyTo60),
+      TimerMixSegment(color: AppColors.lavender, label: 'Later', count: later),
     ];
   }
 }
@@ -189,7 +189,10 @@ class _RecentDocRowState extends State<RecentDocRow> {
         padding: const EdgeInsets.all(10),
         child: Row(
           children: [
-            MiniShot(type: widget.item.type, imagePath: widget.item.imagePath),
+            MiniShot(
+                type: widget.item.type,
+                imagePath: widget.item.imagePath,
+                imageUrl: widget.item.imageDownloadUrl),
             const SizedBox(width: 13),
             Expanded(
               child: Column(

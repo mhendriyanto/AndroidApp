@@ -1,53 +1,51 @@
-# SnapClean Flutter Prototype
+# SnapClean
 
-UI-only Flutter prototype for SnapClean. No backend or Firebase is implemented.
+SnapClean helps users manage temporary screenshots with timers, folders,
+archiving, account sync, and restore controls.
 
-The original HTML design reference is included at:
+## Features
+
+- Firebase email/password authentication
+- Username sign-in support
+- Password reset and username recovery
+- Device photo picker import
+- Default and custom screenshot timers
+- Archive and folder organization
+- Firebase Firestore metadata sync
+- Firebase Storage screenshot upload
+- Recently Deleted restore flow
+- Profile, settings, theme, and notification preferences
+
+## Firebase
+
+The app uses Firebase Core, Authentication, Firestore, and Storage.
+
+Before running a new environment, make sure these files exist:
 
 ```text
-design/index.html
+lib/firebase_options.dart
+android/app/google-services.json
 ```
 
-## Screens
+Deploy security rules after changing Firestore or Storage rules:
 
-- Sign In
-- Sign Up
-- Forgot Password
-- Forgot Username
-- Home
-- Import + Timer
-- Timer Set
-- Active
-- Expiring
-- Keep Forever
-- Profile
-- Edit Profile
-- Settings
-
-## Current Prototype Features
-
-- Local sign-in/sign-out flow
-- Local screenshot import from the Android emulator image picker
-- Custom import timers
-- Active and Expiring timer tabs
-- Auto-delete expired screenshots while the app is open
-- In-app notification when expired screenshots are deleted
-- Screenshot detail screen with keep, snooze, and delete actions
-
-## Android SDK
-
-The project is configured to use:
-
-```text
-/Users/hendricushendriyanto/Library/Android/sdk
+```sh
+firebase deploy --only firestore:rules,storage
 ```
 
 ## Run
 
-Once Flutter is working locally:
-
 ```sh
 cd /Users/hendricushendriyanto/Documents/Final/snapclean_flutter
-/Users/hendricushendriyanto/development/flutter/bin/flutter pub get
-/Users/hendricushendriyanto/development/flutter/bin/flutter run
+flutter pub get
+flutter run
 ```
+
+## Release Checklist
+
+- Configure a production Android application id.
+- Add the matching Android app in Firebase and replace `google-services.json`.
+- Configure Android release signing.
+- Build and test a release APK or App Bundle on a physical device.
+- Prepare store listing screenshots, privacy policy, and support contact.
+- Verify Firebase Auth, Firestore, Storage, import, restore, and delete flows.

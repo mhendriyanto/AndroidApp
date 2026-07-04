@@ -51,21 +51,23 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(onActive: () => selectTab(1)),
-      ActiveScreen(onImport: () => selectTab(4)),
-      SavedScreen(onImport: () => selectTab(4)),
+      const ActiveScreen(),
+      const SavedScreen(),
       const SettingsScreen(),
       ImportScreen(
-          onViewActive: () => selectTab(1), onClose: () => selectTab(0)),
+          onViewActive: () => selectTab(1),
+          onViewSaved: () => selectTab(2),
+          onClose: () => selectTab(0)),
     ];
     return Scaffold(
       body: IndexedStack(index: index, children: pages),
       extendBody: true,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: index == 0
+      floatingActionButton: index == 0 || index == 1 || index == 2
           ? Padding(
               padding: const EdgeInsets.only(bottom: 0, right: 0),
               child: FloatingActionButton(
-                heroTag: 'home-import-fab',
+                heroTag: 'import-fab-$index',
                 elevation: 9,
                 backgroundColor: AppColors.brand,
                 foregroundColor: Colors.white,
@@ -77,18 +79,18 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          height: 72,
-          margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-          padding: const EdgeInsets.all(8),
+          height: 74,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(.94),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xDDE2E8F0)),
+            border: const Border(
+              top: BorderSide(color: Color(0xDDE2E8F0)),
+            ),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x220F172A),
-                  blurRadius: 30,
-                  offset: Offset(0, 14))
+                  color: Color(0x140F172A),
+                  blurRadius: 20,
+                  offset: Offset(0, -8))
             ],
           ),
           child: Row(
@@ -141,7 +143,7 @@ class NavItem extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          height: 54,
+          height: 48,
           decoration: BoxDecoration(
             color: active ? const Color(0xFFECFEFF) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
@@ -151,8 +153,8 @@ class NavItem extends StatelessWidget {
             children: [
               Icon(icon,
                   color: active ? AppColors.brandDark : const Color(0xFF94A3B8),
-                  size: 21),
-              const SizedBox(height: 4),
+                  size: 20),
+              const SizedBox(height: 3),
               Text(label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -160,7 +162,7 @@ class NavItem extends StatelessWidget {
                       color: active
                           ? AppColors.brandDark
                           : const Color(0xFF94A3B8),
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w900)),
             ],
           ),

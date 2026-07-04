@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/snap_item.dart';
 import '../../state/app_controller.dart';
@@ -7,22 +6,21 @@ import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/snap_widgets.dart';
 import '../snap_detail_screen.dart';
+import 'active_screen.dart';
 
 class SavedScreen extends StatefulWidget {
-  final VoidCallback onImport;
-  const SavedScreen({required this.onImport, super.key});
+  const SavedScreen({super.key});
 
   @override
   State<SavedScreen> createState() => _SavedScreenState();
 }
 
 class _SavedScreenState extends State<SavedScreen> {
-  static const _imageImportChannel = MethodChannel('snapclean/image_import');
   String? selectedFolderId;
-  List<SavedFolder> folders = const [];
   bool creatingFolder = false;
-  bool pickingImages = false;
+  bool selecting = false;
   String query = '';
+  final selectedIds = <String>{};
   final folderName = TextEditingController();
 
   @override
@@ -34,6 +32,7 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = SnapCleanScope.of(context);
+    final folders = controller.savedFolders;
     if (selectedFolderId != null &&
         !folders.any((folder) => folder.id == selectedFolderId)) {
       selectedFolderId = null;
@@ -51,18 +50,12 @@ class _SavedScreenState extends State<SavedScreen> {
     return AppPage(
       eyebrow: 'Archive',
       title: 'Saved',
-      scrollable: !creatingFolder && !pickingImages,
+      scrollable: !creatingFolder,
       child: SizedBox(
-        height: creatingFolder || pickingImages
-            ? MediaQuery.sizeOf(context).height - 178
-            : null,
-        child: LoadingOverlay(
-          visible: pickingImages,
-          title: 'Importing images',
-          subtitle: 'Preparing archive previews from the emulator.',
-          child: Stack(children: [
+        height: creatingFolder ? MediaQuery.sizeOf(context).height - 178 : null,
+        child: Stack(children: [
             IgnorePointer(
-              ignoring: creatingFolder || pickingImages,
+              ignoring: creatingFolder,
               child: Opacity(
                 opacity: creatingFolder ? .24 : 1,
                 child: Column(
@@ -94,13 +87,26 @@ class _SavedScreenState extends State<SavedScreen> {
                     ),
                     SectionHeader(
                       title: selectedFolder?.name ?? 'Archive',
-                      action: selectedFolder == null
-                          ? '${items.length} saved'
-                          : 'Manage',
-                      onAction: selectedFolder == null
-                          ? null
-                          : () => _manageFolder(context, selectedFolder),
+                      action: selecting ? 'Cancel' : 'Select',
+                      onAction: () => setState(() {
+                            selecting = !selecting;
+                            selectedIds.clear();
+                          }),
                     ),
+                    if (selecting)
+                      BatchActionBar(
+                        count: selectedIds.length,
+                        primaryLabel: 'Move',
+                        primaryIcon: Icons.drive_file_move_rounded,
+                        onPrimary: selectedIds.isEmpty
+                            ? null
+                            : () => _chooseBatchFolder(context, controller),
+                        secondaryLabel: 'Delete',
+                        secondaryIcon: Icons.delete_outline_rounded,
+                        onSecondary: selectedIds.isEmpty
+                            ? null
+                            : () => _confirmBatchDelete(context),
+                      ),
                     if (items.isEmpty)
                       EmptyStateCard(
                         icon: query.trim().isEmpty
@@ -112,21 +118,20 @@ class _SavedScreenState extends State<SavedScreen> {
                         subtitle: query.trim().isEmpty
                             ? (selectedFolder == null
                                 ? 'Save receipts, QR codes, confirmations, and screenshots you want to keep.'
-                                : 'Tap Manage to add archived screenshots to this folder.')
+                                : 'Add archived screenshots to this folder when you need them here.')
                             : 'Try searching by screenshot name, folder, or note.',
-                        actionLabel: selectedFolder == null
-                            ? 'Import photos'
-                            : availableForSelected.isEmpty
-                                ? 'Import photos'
-                                : 'Add screenshot',
-                        actionIcon: selectedFolder == null ||
-                                availableForSelected.isEmpty
-                            ? Icons.add_photo_alternate_rounded
-                            : Icons.add_rounded,
-                        onAction: selectedFolder == null ||
-                                availableForSelected.isEmpty
-                            ? _pickArchiveImages
-                            : () => _chooseScreenshot(context, selectedFolder),
+                        actionLabel:
+                            selectedFolder != null && availableForSelected.isNotEmpty
+                                ? 'Add screenshot'
+                                : null,
+                        actionIcon:
+                            selectedFolder != null && availableForSelected.isNotEmpty
+                                ? Icons.add_rounded
+                                : null,
+                        onAction:
+                            selectedFolder != null && availableForSelected.isNotEmpty
+                                ? () => _chooseScreenshot(context, selectedFolder)
+                                : null,
                       )
                     else
                       for (final item in items)
@@ -134,25 +139,38 @@ class _SavedScreenState extends State<SavedScreen> {
                           item: item,
                           actions: Row(
                             children: [
-                              Expanded(
-                                child: SecondaryButton(
-                                  label: 'Delete',
-                                  icon: Icons.delete_outline_rounded,
-                                  onTap: () =>
-                                      _confirmDeleteSaved(context, item.id),
-                                ),
-                              ),
-                              if (selectedFolder != null) ...[
-                                const SizedBox(width: 8),
+                              if (selecting)
+                                Expanded(
+                                  child: CheckboxListTile(
+                                    value: selectedIds.contains(item.id),
+                                    onChanged: (_) => _toggleSelected(item.id),
+                                    title: const Text('Select'),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                )
+                              else ...[
                                 Expanded(
                                   child: SecondaryButton(
-                                    label: 'Remove',
-                                    icon: Icons.folder_delete_rounded,
-                                    onTap: () => _removeSnapFromFolder(
-                                        folderId: selectedFolder.id,
-                                        snapId: item.id),
+                                    label: 'Delete',
+                                    icon: Icons.delete_outline_rounded,
+                                    onTap: () =>
+                                        _confirmDeleteSaved(context, item.id),
                                   ),
                                 ),
+                                if (selectedFolder != null) ...[
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: SecondaryButton(
+                                      label: 'Remove',
+                                      icon: Icons.folder_delete_rounded,
+                                      onTap: () => _removeSnapFromFolder(
+                                          folderId: selectedFolder.id,
+                                          snapId: item.id),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ],
                           ),
@@ -180,7 +198,6 @@ class _SavedScreenState extends State<SavedScreen> {
               ),
             ],
           ]),
-        ),
       ),
     );
   }
@@ -203,18 +220,7 @@ class _SavedScreenState extends State<SavedScreen> {
   }
 
   List<SnapItem> _snapsInFolder(AppController controller, String folderId) {
-    SavedFolder? folder;
-    for (final item in folders) {
-      if (item.id == folderId) {
-        folder = item;
-        break;
-      }
-    }
-    if (folder == null) return const [];
-    final snapIds = folder.snapIds;
-    return controller.keptSnaps
-        .where((snap) => snapIds.contains(snap.id))
-        .toList(growable: false);
+    return controller.snapsInFolder(folderId);
   }
 
   void _startCreateFolder() {
@@ -227,62 +233,12 @@ class _SavedScreenState extends State<SavedScreen> {
   }
 
   void _submitFolder() {
-    final trimmed = folderName.text.trim();
-    final folder = SavedFolder(
-      id: 'folder-${DateTime.now().microsecondsSinceEpoch}',
-      name: trimmed.isEmpty ? 'New folder' : trimmed,
-      createdAt: DateTime.now(),
-    );
+    final folder = SnapCleanScope.of(context).createSavedFolder(folderName.text);
     folderName.clear();
     setState(() {
-      folders = [folder, ...folders];
       selectedFolderId = folder.id;
       creatingFolder = false;
     });
-  }
-
-  Future<void> _pickArchiveImages() async {
-    if (pickingImages) return;
-    setState(() => pickingImages = true);
-    try {
-      final images =
-          await _imageImportChannel.invokeListMethod<String>('pickImages');
-      if (!mounted) return;
-      if (images == null || images.isEmpty) {
-        setState(() => pickingImages = false);
-        return;
-      }
-      SnapCleanScope.of(context).saveArchivedImages(images);
-      setState(() {
-        selectedFolderId = null;
-        pickingImages = false;
-      });
-      if (!mounted) return;
-      showSuccessSheet(
-        context,
-        title: 'Saved to Archive',
-        message:
-            '${images.length} ${images.length == 1 ? 'screenshot' : 'screenshots'} will not be auto-deleted.',
-        primaryLabel: 'View Archive',
-        primaryIcon: Icons.bookmark_rounded,
-        onPrimary: () => setState(() => selectedFolderId = null),
-        secondaryLabel: 'Create folder',
-        secondaryIcon: Icons.create_new_folder_rounded,
-        onSecondary: _startCreateFolder,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      SnapCleanScope.of(context).saveSampleArchive();
-      setState(() {
-        selectedFolderId = null;
-        pickingImages = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'The emulator picker is unavailable here, so sample archive shots were added.')),
-      );
-    }
   }
 
   void _confirmDeleteFolderFromSaved(SavedFolder folder) {
@@ -295,91 +251,11 @@ class _SavedScreenState extends State<SavedScreen> {
             danger: true)
         .then((confirmed) {
       if (!confirmed || !mounted) return;
+      SnapCleanScope.of(context).deleteSavedFolder(folder.id);
       setState(() {
-        folders = folders
-            .where((item) => item.id != folder.id)
-            .toList(growable: false);
         if (selectedFolderId == folder.id) selectedFolderId = null;
       });
     });
-  }
-
-  void _manageFolder(BuildContext context, SavedFolder folder) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            EmptyStateCard(
-                icon: Icons.folder_rounded,
-                title: folder.name,
-                subtitle:
-                    '${_snapsInFolder(SnapCleanScope.of(context), folder.id).length} archived screenshots'),
-            PrimaryButton(
-                label: 'Add screenshots',
-                icon: Icons.add_photo_alternate_rounded,
-                onTap: () {
-                  Navigator.pop(context);
-                  _chooseScreenshot(context, folder);
-                }),
-            const SizedBox(height: 12),
-            SecondaryButton(
-                label: 'Rename folder',
-                icon: Icons.edit_rounded,
-                onTap: () {
-                  Navigator.pop(context);
-                  _renameLocalFolder(folder);
-                }),
-            const SizedBox(height: 12),
-            SecondaryButton(
-                label: 'Delete folder',
-                icon: Icons.delete_outline_rounded,
-                onTap: () {
-                  Navigator.pop(context);
-                  _confirmDeleteFolderFromSaved(folder);
-                }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _renameLocalFolder(SavedFolder folder) {
-    final controller = TextEditingController(text: folder.name);
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppField(label: 'Folder name', value: '', controller: controller),
-            const SizedBox(height: 14),
-            PrimaryButton(
-                label: 'Save folder name',
-                icon: Icons.check_rounded,
-                onTap: () {
-                  final next = controller.text.trim();
-                  if (next.isNotEmpty) {
-                    setState(() {
-                      folders = [
-                        for (final item in folders)
-                          item.id == folder.id
-                              ? item.copyWith(name: next)
-                              : item
-                      ];
-                    });
-                  }
-                  Navigator.pop(context);
-                }),
-          ],
-        ),
-      ),
-    ).then((_) => controller.dispose());
   }
 
   void _chooseScreenshot(BuildContext context, SavedFolder folder) {
@@ -428,43 +304,94 @@ class _SavedScreenState extends State<SavedScreen> {
         .then((confirmed) {
       if (!confirmed || !mounted) return;
       SnapCleanScope.of(context).deleteSnap(id);
-      setState(() => _removeSnapFromFolders(id));
     });
   }
 
   void _addSnapToFolder({required String folderId, required String snapId}) {
-    setState(() {
-      folders = [
-        for (final folder in folders)
-          if (folder.id == folderId)
-            folder.snapIds.contains(snapId)
-                ? folder
-                : folder.copyWith(snapIds: [...folder.snapIds, snapId])
-          else
-            folder
-      ];
-    });
+    SnapCleanScope.of(context)
+        .addSnapToFolder(folderId: folderId, snapId: snapId);
   }
 
   void _removeSnapFromFolder(
       {required String folderId, required String snapId}) {
+    SnapCleanScope.of(context)
+        .removeSnapFromFolder(folderId: folderId, snapId: snapId);
+  }
+
+  void _toggleSelected(String id) {
     setState(() {
-      folders = [
-        for (final folder in folders)
-          folder.id == folderId
-              ? folder.copyWith(
-                  snapIds: folder.snapIds.where((id) => id != snapId).toList())
-              : folder
-      ];
+      if (!selectedIds.add(id)) selectedIds.remove(id);
     });
   }
 
-  void _removeSnapFromFolders(String snapId) {
-    folders = [
-      for (final folder in folders)
-        folder.copyWith(
-            snapIds: folder.snapIds.where((id) => id != snapId).toList())
-    ];
+  void _confirmBatchDelete(BuildContext context) {
+    showConfirmSheet(context,
+            title: 'Delete selected?',
+            message:
+                '${selectedIds.length} screenshots will move to Recently Deleted.',
+            confirmLabel: 'Delete',
+            icon: Icons.delete_outline_rounded,
+            danger: true)
+        .then((confirmed) {
+      if (!confirmed || !mounted) return;
+      final controller = SnapCleanScope.of(context);
+      for (final id in selectedIds.toList()) {
+        controller.deleteSnap(id);
+      }
+      setState(() {
+        selecting = false;
+        selectedIds.clear();
+      });
+    });
+  }
+
+  void _chooseBatchFolder(BuildContext context, AppController controller) {
+    final folders = controller.savedFolders;
+    if (folders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a folder first.')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SectionHeader(title: 'Move to folder', action: ''),
+            for (final folder in folders)
+              ListTile(
+                leading: const Icon(Icons.folder_rounded,
+                    color: AppColors.brand),
+                title: Text(folder.name,
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: Text('${folder.snapIds.length} saved'),
+                onTap: () {
+                  for (final id in selectedIds.toList()) {
+                    for (final existing in controller.savedFolders) {
+                      if (existing.id != folder.id &&
+                          existing.snapIds.contains(id)) {
+                        controller.removeSnapFromFolder(
+                            folderId: existing.id, snapId: id);
+                      }
+                    }
+                    controller.addSnapToFolder(folderId: folder.id, snapId: id);
+                  }
+                  Navigator.pop(sheetContext);
+                  setState(() {
+                    selecting = false;
+                    selectedIds.clear();
+                    selectedFolderId = folder.id;
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
