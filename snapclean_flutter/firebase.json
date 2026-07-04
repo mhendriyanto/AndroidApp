@@ -1,0 +1,25 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "androidapp-snapclean",
+          "appId": "1:295811438021:android:ba824af618e096bdbfe7ac",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "androidapp-snapclean",
+          "configurations": {
+            "android": "1:295811438021:android:ba824af618e096bdbfe7ac"
+          }
+        }
+      }
+    }
+  }
+}

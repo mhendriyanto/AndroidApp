@@ -51,7 +51,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(onActive: () => selectTab(1)),
-      const ActiveScreen(),
+      ActiveScreen(onImport: () => selectTab(4)),
       SavedScreen(onImport: () => selectTab(4)),
       const SettingsScreen(),
       ImportScreen(

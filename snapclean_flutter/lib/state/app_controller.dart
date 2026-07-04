@@ -258,7 +258,7 @@ class AppController extends ChangeNotifier {
     final hours = minutes ~/ 60;
     final remainder = minutes % 60;
     if (remainder == 0) return hours == 1 ? '1 hour' : '$hours hours';
-    return '${hours}h ${remainder}m';
+    return '${hours}hr ${remainder} min';
   }
 
   List<SnapItem> saveImport() {
@@ -466,7 +466,7 @@ class AppController extends ChangeNotifier {
             resumeExpiresAt: snap.resumeExpiresAt ?? snap.expiresAt,
             status: SnapStatus.active,
             note:
-                'Snoozed for ${duration.inMinutes >= 60 ? '${duration.inHours}h' : '${duration.inMinutes}m'}.'));
+                'Snoozed for ${duration.inMinutes >= 60 ? '${duration.inHours}hr' : '${duration.inMinutes} min'}.'));
   }
 
   void unsnoozeSnap(String id) {

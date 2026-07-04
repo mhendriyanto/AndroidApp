@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../models/snap_item.dart';
+import '../../services/auth_repository.dart';
+import '../../services/firestore_repository.dart';
 import '../../state/app_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -17,6 +21,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final username = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
+  final authRepository = AuthRepository();
+  final firestoreRepository = FirestoreRepository();
+  bool isLoading = false;
 
   @override
   void dispose() {
@@ -61,15 +68,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     obscure: true),
                 const SizedBox(height: 20),
                 PrimaryButton(
-                  label: 'Create account',
+                  label: isLoading ? 'Creating account...' : 'Create account',
                   icon: Icons.person_add_alt_1_rounded,
-                  onTap: () {
-                    SnapCleanScope.of(context).createAccount(
-                        username: username.text.trim(),
-                        email: email.text.trim());
-                    Navigator.pushReplacement(context,
-                        MaterialPageRoute(builder: (_) => const MainShell()));
-                  },
+                  onTap: isLoading ? () {} : _createAccount,
                 ),
                 const SizedBox(height: 18),
                 LinkText('Already have one? Sign in',
@@ -79,6 +80,85 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _createAccount() async {
+    final trimmedUsername = username.text.trim();
+    final trimmedEmail = email.text.trim();
+    final enteredPassword = password.text;
+    if (trimmedUsername.isEmpty ||
+        trimmedEmail.isEmpty ||
+        enteredPassword.isEmpty) {
+      _showMessage('Enter a username, email, and password.');
+      return;
+    }
+    if (enteredPassword.length < 6) {
+      _showMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    setState(() => isLoading = true);
+    try {
+      final existingEmail =
+          await firestoreRepository.emailForUsername(trimmedUsername);
+      if (existingEmail != null) {
+        if (!mounted) return;
+        _showMessage('That username is already taken.');
+        return;
+      }
+      final credential = await authRepository.createUserWithEmailAndPassword(
+        email: trimmedEmail,
+        password: enteredPassword,
+      );
+      await authRepository.updateDisplayName(trimmedUsername);
+      final profile = UserProfile(
+        name: trimmedUsername,
+        email: trimmedEmail,
+        username: trimmedUsername,
+      );
+      await firestoreRepository.upsertUserProfile(
+        profile,
+        uid: credential.user?.uid,
+      );
+      await firestoreRepository.reserveUsername(
+        username: trimmedUsername,
+        email: trimmedEmail,
+        uid: credential.user?.uid,
+      );
+      if (!mounted) return;
+      SnapCleanScope.of(context).createAccount(
+        username: trimmedUsername,
+        email: trimmedEmail,
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainShell()),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      _showMessage(_authErrorMessage(error));
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Unable to create the account right now.');
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  String _authErrorMessage(FirebaseAuthException error) {
+    return switch (error.code) {
+      'email-already-in-use' => 'An account already exists for this email.',
+      'invalid-email' => 'Enter a valid email address.',
+      'weak-password' => 'Use a stronger password.',
+      'network-request-failed' => 'Check your connection and try again.',
+      _ => error.message ?? 'Unable to create the account right now.',
+    };
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/snap_item.dart';
+import '../../services/auth_repository.dart';
+import '../../services/firestore_repository.dart';
 import '../../state/app_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common.dart';
@@ -10,7 +13,17 @@ import '../tabs/settings_screen.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  void _signOut(BuildContext context) {
+  Future<void> _signOut(BuildContext context) async {
+    try {
+      await AuthRepository().signOut();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signed out locally.')),
+        );
+      }
+    }
+    if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SignInScreen()),
       (_) => false,
@@ -39,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Text(user.name,
+                          Text(user.username,
                               style: const TextStyle(
                                   fontSize: 20, fontWeight: FontWeight.w900)),
                           const SizedBox(height: 4),
@@ -64,7 +77,7 @@ class ProfileScreen extends StatelessWidget {
                   StaticSettingsRowButton(
                     icon: Icons.person_outline_rounded,
                     title: 'Personal information',
-                    subtitle: 'Name, email, and username',
+                    subtitle: 'Username and email',
                     onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -136,23 +149,26 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  TextEditingController? name;
+  static const _imageImportChannel = MethodChannel('snapclean/image_import');
   TextEditingController? email;
   TextEditingController? username;
+  final firestoreRepository = FirestoreRepository();
+  String? avatarImagePath;
+  bool pickingPhoto = false;
+  bool isSaving = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (name != null) return;
+    if (email != null) return;
     final user = SnapCleanScope.of(context).user;
-    name = TextEditingController(text: user.name);
     email = TextEditingController(text: user.email);
     username = TextEditingController(text: user.username);
+    avatarImagePath = user.avatarImagePath;
   }
 
   @override
   void dispose() {
-    name?.dispose();
     email?.dispose();
     username?.dispose();
     super.dispose();
@@ -171,35 +187,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             AppCard(
                 child: Column(children: [
-              const ProfileBlock(),
+              ProfileBlock(imagePath: avatarImagePath),
               const SizedBox(height: 16),
               SecondaryButton(
-                  label: 'Change photo',
+                  label: pickingPhoto ? 'Opening photos...' : 'Change photo',
                   icon: Icons.camera_alt_rounded,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Photo picker preview only.'))))
+                  onTap: pickingPhoto ? () {} : _pickProfilePhoto)
             ])),
             const SectionHeader(title: 'Details', action: ''),
             AppCard(
                 child: Column(children: [
-              AppField(label: 'Name', value: '', controller: name),
+              AppField(label: 'Username', value: '', controller: username),
               const SizedBox(height: 12),
-              AppField(label: 'Email', value: '', controller: email),
-              const SizedBox(height: 12),
-              AppField(label: 'Username', value: '', controller: username)
+              AppField(label: 'Email', value: '', controller: email)
             ])),
             const SizedBox(height: 20),
             PrimaryButton(
-              label: 'Save changes',
+              label: isSaving ? 'Saving...' : 'Save changes',
               icon: Icons.check_rounded,
-              onTap: () {
-                SnapCleanScope.of(context).updateProfile(UserProfile(
-                    name: name!.text.trim(),
-                    email: email!.text.trim(),
-                    username: username!.text.trim()));
-                Navigator.pop(context);
-              },
+              onTap: isSaving ? () {} : _saveProfile,
             ),
             const SizedBox(height: 12),
             SecondaryButton(
@@ -210,6 +216,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveProfile() async {
+    final nextUsername = username!.text.trim();
+    final nextEmail = email!.text.trim();
+    if (nextUsername.isEmpty || nextEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a username and email.')),
+      );
+      return;
+    }
+
+    setState(() => isSaving = true);
+    final nextProfile = UserProfile(
+      name: nextUsername,
+      email: nextEmail,
+      username: nextUsername,
+      avatarImagePath: avatarImagePath,
+    );
+    try {
+      final existingEmail =
+          await firestoreRepository.emailForUsername(nextUsername);
+      if (existingEmail != null && existingEmail != nextEmail) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That username is already taken.')),
+        );
+        setState(() => isSaving = false);
+        return;
+      }
+      await firestoreRepository.upsertUserProfile(nextProfile);
+      await firestoreRepository.reserveUsername(
+        username: nextUsername,
+        email: nextEmail,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved locally. Cloud sync failed.')),
+        );
+      }
+    }
+    if (!mounted) return;
+    SnapCleanScope.of(context).updateProfile(nextProfile);
+    Navigator.pop(context);
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    setState(() => pickingPhoto = true);
+    try {
+      final images =
+          await _imageImportChannel.invokeListMethod<String>('pickImages');
+      if (!mounted) return;
+      if (images == null || images.isEmpty) {
+        setState(() => pickingPhoto = false);
+        return;
+      }
+      setState(() {
+        avatarImagePath = images.first;
+        pickingPhoto = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => pickingPhoto = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('The emulator photo picker is unavailable here.')),
+      );
+    }
   }
 }
 

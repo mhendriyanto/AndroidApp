@@ -114,8 +114,8 @@ class HomeScreen extends StatelessWidget {
       }
     }
     return [
-      TimerMixSegment(color: AppColors.rose, label: '30m', count: under30),
-      TimerMixSegment(color: AppColors.amber, label: '1h', count: under60),
+      TimerMixSegment(color: AppColors.rose, label: '30 min', count: under30),
+      TimerMixSegment(color: AppColors.amber, label: '1hr', count: under60),
       TimerMixSegment(color: AppColors.brand, label: 'Later', count: later),
       TimerMixSegment(
           color: AppColors.mint,

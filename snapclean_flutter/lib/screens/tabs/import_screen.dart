@@ -25,13 +25,6 @@ class ImportScreen extends StatelessWidget {
       leading: RoundIcon(icon: Icons.chevron_left_rounded, onTap: onClose),
       child: Column(
         children: [
-          ImportSteps(
-            selectedImages: draft.isNotEmpty,
-            selectedTimer: draft.isNotEmpty &&
-                (controller.selectedImportTimer.duration != null ||
-                    controller.selectedImportTimer.id ==
-                        TimerPreset.forever.name),
-          ),
           GestureDetector(
             onTap: () => _openImageImport(context),
             child: const GoogleAddBox(),

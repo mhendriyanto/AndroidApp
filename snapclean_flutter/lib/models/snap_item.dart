@@ -104,10 +104,10 @@ class SnapItem {
     if (left.isNegative) return 'Expired';
     if (left.inSeconds < 600) {
       final seconds = left.inSeconds.clamp(1, 599);
-      return '${seconds ~/ 60}m ${seconds % 60}s';
+      return '${seconds ~/ 60} min ${seconds % 60}s';
     }
-    if (left.inMinutes < 60) return '${left.inMinutes.clamp(1, 59)}m';
-    if (left.inHours < 24) return '${left.inHours}h';
+    if (left.inMinutes < 60) return '${left.inMinutes.clamp(1, 59)} min';
+    if (left.inHours < 24) return '${left.inHours}hr';
     return 'Tomorrow';
   }
 
@@ -199,14 +199,25 @@ class UserProfile {
   final String name;
   final String email;
   final String username;
+  final String? avatarImagePath;
 
-  const UserProfile(
-      {required this.name, required this.email, required this.username});
+  const UserProfile({
+    required this.name,
+    required this.email,
+    required this.username,
+    this.avatarImagePath,
+  });
 
-  UserProfile copyWith({String? name, String? email, String? username}) {
+  UserProfile copyWith({
+    String? name,
+    String? email,
+    String? username,
+    String? avatarImagePath,
+  }) {
     return UserProfile(
         name: name ?? this.name,
         email: email ?? this.email,
-        username: username ?? this.username);
+        username: username ?? this.username,
+        avatarImagePath: avatarImagePath ?? this.avatarImagePath);
   }
 }

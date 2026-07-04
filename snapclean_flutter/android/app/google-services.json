@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "295811438021",
+    "project_id": "androidapp-snapclean",
+    "storage_bucket": "androidapp-snapclean.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:295811438021:android:ba824af618e096bdbfe7ac",
+        "android_client_info": {
+          "package_name": "com.example.snapclean_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtlslhQlCOBNwi2FqoTh23VrGJW4KClwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

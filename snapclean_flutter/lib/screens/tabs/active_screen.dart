@@ -8,7 +8,8 @@ import '../../widgets/snap_widgets.dart';
 import '../snap_detail_screen.dart';
 
 class ActiveScreen extends StatefulWidget {
-  const ActiveScreen({super.key});
+  final VoidCallback onImport;
+  const ActiveScreen({required this.onImport, super.key});
 
   @override
   State<ActiveScreen> createState() => _ActiveScreenState();
@@ -48,7 +49,7 @@ class _ActiveScreenState extends State<ActiveScreen> {
                 color: AppColors.brand),
             StatTileData(
                 value: '$urgent',
-                label: 'under 10m',
+                label: 'under 10 min',
                 icon: Icons.priority_high_rounded,
                 color: urgent == 0 ? AppColors.subtle : AppColors.rose),
             StatTileData(
@@ -64,16 +65,26 @@ class _ActiveScreenState extends State<ActiveScreen> {
               onChanged: (next) => setState(() => filter = next)),
           SectionHeader(title: 'Screenshots', action: '${items.length} shown'),
           if (items.isEmpty)
-            EmptyStateCard(
-              icon: query.trim().isEmpty
-                  ? Icons.hourglass_empty_rounded
-                  : Icons.search_off_rounded,
-              title: query.trim().isEmpty
-                  ? 'No active timers'
-                  : 'No results found',
-              subtitle: query.trim().isEmpty
-                  ? 'Import screenshots and set a timer to keep your camera roll clean.'
-                  : 'Try searching by screenshot name, note, or timer group.',
+            Column(
+              children: [
+                EmptyStateCard(
+                  icon: query.trim().isEmpty
+                      ? Icons.hourglass_empty_rounded
+                      : Icons.search_off_rounded,
+                  title: query.trim().isEmpty
+                      ? 'No active timers'
+                      : 'No results found',
+                  subtitle: query.trim().isEmpty
+                      ? 'Import screenshots and set a timer to keep your camera roll clean.'
+                      : 'Try searching by screenshot name, note, or timer group.',
+                ),
+                if (controller.activeSnaps.isEmpty && query.trim().isEmpty)
+                  PrimaryButton(
+                    label: 'Import Photos',
+                    icon: Icons.add_photo_alternate_rounded,
+                    onTap: widget.onImport,
+                  ),
+              ],
             )
           else
             for (final item in items)
@@ -145,9 +156,9 @@ class _ActiveScreenState extends State<ActiveScreen> {
   List<_TimerFilterTab> _tabs(AppController controller) {
     return [
       const _TimerFilterTab(label: 'All'),
-      const _TimerFilterTab(label: '10m', duration: Duration(minutes: 10)),
-      const _TimerFilterTab(label: '30m', duration: Duration(minutes: 30)),
-      const _TimerFilterTab(label: '1h', duration: Duration(hours: 1)),
+      const _TimerFilterTab(label: '10 min', duration: Duration(minutes: 10)),
+      const _TimerFilterTab(label: '30 min', duration: Duration(minutes: 30)),
+      const _TimerFilterTab(label: '1hr', duration: Duration(hours: 1)),
       for (final timer in controller.customImportTimers)
         if (timer.duration != null)
           _TimerFilterTab(label: timer.label, duration: timer.duration),

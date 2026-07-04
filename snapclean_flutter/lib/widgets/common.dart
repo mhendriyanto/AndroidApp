@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import '../state/app_controller.dart';
 import '../theme/app_theme.dart';
 
 class AuthShell extends StatelessWidget {
@@ -63,7 +66,7 @@ class AppPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: AppText.title),
+                      Text(_titleCase(title), style: AppText.title),
                     ],
                   ),
                 ),
@@ -76,6 +79,14 @@ class AppPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _titleCase(String value) {
+    return value.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      if (word == word.toUpperCase()) return word;
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
   }
 }
 
@@ -323,9 +334,11 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarImagePath = SnapCleanScope.of(context).user.avatarImagePath;
     final avatar = Container(
       width: 44,
       height: 44,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
@@ -338,8 +351,15 @@ class ProfileAvatar extends StatelessWidget {
               color: Color(0x0F111827), blurRadius: 12, offset: Offset(0, 6))
         ],
       ),
-      child: const Icon(Icons.person_rounded,
-          color: AppColors.brandDark, size: 25),
+      child: avatarImagePath == null || avatarImagePath.isEmpty
+          ? const Icon(Icons.person_rounded,
+              color: AppColors.brandDark, size: 25)
+          : Image.file(
+              File(avatarImagePath),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded,
+                  color: AppColors.brandDark, size: 25),
+            ),
     );
     if (onTap == null) return avatar;
     return Semantics(

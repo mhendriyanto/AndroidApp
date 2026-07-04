@@ -70,12 +70,6 @@ class _SavedScreenState extends State<SavedScreen> {
                     AppSearchBar(
                         hint: 'Search archive',
                         onChanged: (value) => setState(() => query = value)),
-                    const SizedBox(height: 12),
-                    SavedQuickActions(
-                        onImport: _pickArchiveImages,
-                        onImportFiles: _pickArchiveImages,
-                        onCreateFolder: _startCreateFolder),
-                    const SizedBox(height: 14),
                     const InsightCard(
                       icon: Icons.verified_user_rounded,
                       title: 'Only intentional archives live here',
@@ -83,7 +77,11 @@ class _SavedScreenState extends State<SavedScreen> {
                           'Archived screenshots have no countdown and stay separate from cleanup timers.',
                       color: AppColors.mint,
                     ),
-                    const SectionHeader(title: 'Folders', action: ''),
+                    SectionHeader(
+                      title: 'Folders',
+                      action: 'Create Folder',
+                      onAction: _startCreateFolder,
+                    ),
                     SavedFolderTabs(
                       folders: folders,
                       selectedFolderId: selectedFolderId,
@@ -708,48 +706,6 @@ class SavedFolderScreen extends StatelessWidget {
   }
 }
 
-class SavedQuickActions extends StatelessWidget {
-  final VoidCallback onImport;
-  final VoidCallback onImportFiles;
-  final VoidCallback onCreateFolder;
-  const SavedQuickActions(
-      {required this.onImport,
-      required this.onImportFiles,
-      required this.onCreateFolder,
-      super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: SavedActionTab(
-            icon: Icons.photo_library_rounded,
-            label: 'Import photos',
-            onTap: onImport,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: SavedActionTab(
-            icon: Icons.folder_copy_rounded,
-            label: 'Import files',
-            onTap: onImportFiles,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: SavedActionTab(
-            icon: Icons.create_new_folder_rounded,
-            label: 'Create folder',
-            onTap: onCreateFolder,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _CreateFolderCard extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onCancel;
@@ -1024,49 +980,6 @@ class SavedFolderCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(count == 1 ? '1 screenshot' : '$count screenshots',
                 style: AppText.label),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SavedActionTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const SavedActionTab(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 78,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: AppColors.brandDark, size: 22),
-            const SizedBox(height: 7),
-            Text(label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 11,
-                    height: 1.1,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.ink)),
           ],
         ),
       ),

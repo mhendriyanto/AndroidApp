@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../models/snap_item.dart';
@@ -770,7 +772,7 @@ class AccountCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.name,
+                  Text(user.username,
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
@@ -838,21 +840,32 @@ class SettingsGroup extends StatelessWidget {
 }
 
 class ProfileBlock extends StatelessWidget {
-  const ProfileBlock({super.key});
+  final String? imagePath;
+  const ProfileBlock({this.imagePath, super.key});
 
   @override
   Widget build(BuildContext context) {
+    final avatarImagePath =
+        imagePath ?? SnapCleanScope.of(context).user.avatarImagePath;
     return Container(
       width: 78,
       height: 78,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
               colors: [Color(0xFFCFFAFE), Color(0xFFF0FDFA)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight)),
-      child: const Icon(Icons.person_rounded,
-          color: AppColors.brandDark, size: 44),
+      child: avatarImagePath == null || avatarImagePath.isEmpty
+          ? const Icon(Icons.person_rounded,
+              color: AppColors.brandDark, size: 44)
+          : Image.file(
+              File(avatarImagePath),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded,
+                  color: AppColors.brandDark, size: 44),
+            ),
     );
   }
 }
