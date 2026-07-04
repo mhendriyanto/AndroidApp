@@ -15,10 +15,12 @@ class ImportScreen extends StatelessWidget {
   final VoidCallback onViewActive;
   final VoidCallback onViewSaved;
   final VoidCallback onClose;
+  final VoidCallback onSystemPickerOpening;
   const ImportScreen(
       {required this.onViewActive,
       required this.onViewSaved,
       required this.onClose,
+      required this.onSystemPickerOpening,
       super.key});
 
   @override
@@ -157,7 +159,9 @@ class ImportScreen extends StatelessWidget {
   void _openImageImport(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ImageImportScreen()),
+      MaterialPageRoute(
+          builder: (_) => ImageImportScreen(
+              onSystemPickerOpening: onSystemPickerOpening)),
     );
   }
 
@@ -842,7 +846,8 @@ class _AddTimerScreenState extends State<AddTimerScreen> {
 }
 
 class ImageImportScreen extends StatefulWidget {
-  const ImageImportScreen({super.key});
+  final VoidCallback onSystemPickerOpening;
+  const ImageImportScreen({required this.onSystemPickerOpening, super.key});
 
   @override
   State<ImageImportScreen> createState() => _ImageImportScreenState();
@@ -854,6 +859,7 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
 
   Future<void> _pickImages() async {
     setState(() => picking = true);
+    widget.onSystemPickerOpening();
     try {
       final images = await _imageImportChannel.invokeListMethod<String>(
         'pickImages',
@@ -897,9 +903,9 @@ class _ImageImportScreenState extends State<ImageImportScreen> {
               children: [
                 const EmptyStateCard(
                   icon: Icons.privacy_tip_outlined,
-                  title: 'Choose only what SnapClean can see',
+                  title: 'Choose screenshots to add',
                   subtitle:
-                      'SnapClean only imports the images you select. It does not scan your gallery.',
+                      'Pick one screenshot or select several if Android allows it. Repeat this step to add more.',
                 ),
                 PrimaryButton(
                   label: picking ? 'Opening picker' : 'Choose Image',

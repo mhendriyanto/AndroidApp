@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../screens/auth/sign_in_screen.dart';
 import '../screens/tabs/active_screen.dart';
 import '../screens/tabs/home_screen.dart';
 import '../screens/tabs/import_screen.dart';
@@ -15,10 +16,17 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int index = 0;
   AppController? controller;
   int lastNoticeId = 0;
+  bool skipNextResumeSignInReset = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   void selectTab(int next) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -37,8 +45,22 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     controller?.removeListener(_showLatestNotice);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    if (skipNextResumeSignInReset) {
+      skipNextResumeSignInReset = false;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _returnToSignIn();
+    });
   }
 
   void _showLatestNotice() {
@@ -47,6 +69,14 @@ class _MainShellState extends State<MainShell> {
     lastNoticeId = notice.id;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(notice.message)),
+    );
+  }
+
+  void _returnToSignIn() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SignInScreen()),
+      (_) => false,
     );
   }
 
@@ -60,7 +90,8 @@ class _MainShellState extends State<MainShell> {
       ImportScreen(
           onViewActive: () => selectTab(1),
           onViewSaved: () => selectTab(2),
-          onClose: () => selectTab(0)),
+          onClose: () => selectTab(0),
+          onSystemPickerOpening: () => skipNextResumeSignInReset = true),
     ];
     return Scaffold(
       body: IndexedStack(index: index, children: pages),

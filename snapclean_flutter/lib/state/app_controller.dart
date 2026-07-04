@@ -226,11 +226,13 @@ class AppController extends ChangeNotifier {
 
   void setImportDraftFromPaths(List<String> imagePaths) {
     final types = MockType.values;
+    final startIndex = importDraft.length;
     importDraft = [
+      ...importDraft,
       for (int index = 0; index < imagePaths.length; index++)
         ImportDraftItem(
-          type: types[index % types.length],
-          title: 'Imported image ${index + 1}',
+          type: types[(startIndex + index) % types.length],
+          title: 'Imported image ${startIndex + index + 1}',
           imagePath: imagePaths[index],
           timerMinutes: selectedImportTimer.duration?.inMinutes,
           timerLabel: selectedImportTimer.label,

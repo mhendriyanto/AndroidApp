@@ -50,16 +50,15 @@ class MainActivity : FlutterActivity() {
             val pickerMax = MediaStore.getPickImagesMaxLimit().coerceAtLeast(1)
             return Intent(MediaStore.ACTION_PICK_IMAGES).apply {
                 type = "image/*"
-                if (maxItems > 1) {
-                    putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, minOf(maxItems, pickerMax))
-                }
+                putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, minOf(maxItems, pickerMax))
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "image/*"
-            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxItems > 1)
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
